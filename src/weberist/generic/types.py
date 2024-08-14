@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, List
 
 from weberist.generic.shortcuts import (
     Firefox,
@@ -33,7 +33,7 @@ WebDriverServices = Union[
     SafariService,
     EdgeService,
 ]
-WebElements = list[WebElement]
+WebElements = List[WebElement]
 
 WebDriverManagers = Union[
     ChromeDriverManager,
