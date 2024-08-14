@@ -1,0 +1,37 @@
+version: '3'
+
+networks:
+  {network}:
+    external: True
+    name: {network} # This assumes network is already created
+
+services:
+
+  selenoid:
+    image: "aerokube/selenoid:latest"
+    container_name: weberist-selenoid
+    volumes:
+      - ".:/etc/selenoid"
+      - "./target:/output"
+      - "./browsers.json:/etc/selenoid/browsers.json"
+      - "./video:/opt/selenoid/video"
+      - "./logs:/opt/selenoid/logs"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    environment:
+      - OVERRIDE_VIDEO_OUTPUT_DIR=./video
+    networks:
+      - {network}
+    ports:
+      - "4444:4444"
+    command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-limit", "64", "-container-network", "{network}"]
+  
+  selenoid-ui:
+    image: "aerokube/selenoid-ui:latest"
+    container_name: weberist-selenoid-ui
+    links:
+      - selenoid
+    networks:
+      - {network}
+    ports:
+      - "8081:8080"
+    command: ["--selenoid-uri", "http://selenoid:4444"]

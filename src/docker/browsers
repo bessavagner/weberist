@@ -1,0 +1,16 @@
+{{
+    "chrome": {{
+        "default": "chrome_{version}.0",
+        "versions": {{
+            "chrome_{version}.0": {{
+                "image": "weberist-chrome_{version}.0",
+                "port": "4444",
+                "tmpfs": {{
+                    "/tmp": "size=512m",
+                    "/var": "size=128m"
+                }},
+                "path": "/"
+            }}
+        }}
+    }}
+}}

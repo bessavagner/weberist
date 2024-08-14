@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "weberist"
+version = "0.1.0"
+description = "Adapter for Selenium"
+authors = ["bessavagner <bessavagner@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "weberist", from = "src"}]
+include = [
+    {path = "src/docker/Dockerfile-chrome", format = ["sdist", "wheel"]},
+    {path = "src/docker/docker-compose-selenoid.yml", format = ["sdist", "wheel"]}
+]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+selenium = "^4.23.1"
+webdriver-manager = "^4.0.2"
+docker = "^7.1.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
