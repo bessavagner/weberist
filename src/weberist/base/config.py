@@ -5,9 +5,9 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = BASE_DIR.parent
 DATA_DIR = BASE_DIR.parent / 'data'
-DOCKER_DIR = BASE_DIR.parent / 'dockerfiles'
+DOCKER_DIR = BASE_DIR.parent / 'docker'
 CHROME_IMAGE = 'weberist-chrome_{version}.0'
-DOCKER_NETWORK = 'selenoid'
+DOCKER_NETWORK = 'weberist'
 CHROME_VERSIONS = tuple(str(i) for i in range(48, 128))
 
 LOG = {
