@@ -57,14 +57,16 @@ class ChromeDriver(BaseDriver):
             target_path = Path('.')
             if 'localstorage' in kwargs:
                 target_path = Path(kwargs['localstorage'])
+                kwargs.pop('localstorage')
                 if options_arguments is None:
-                    options_arguments.append = []
+                    options_arguments = []
                 options_arguments.append(
                     f"--user-data-dir={target_path.absolute()}"
                 )
             options_arguments.append(
                 f"--profile-directory={kwargs['profile']}"
             )
+            kwargs.pop('profile')
         return super().__new__(
             cls,
             *args,

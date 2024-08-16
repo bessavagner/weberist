@@ -49,8 +49,22 @@ from weberist.generic.constants import (
     DEFAULT_ARGUMENTS,
     SELENOID_CAPABILITIES,
 )
+from .data import UserAgent
+from .config import DEFAULT_PROFILE
 
 logger = logging.getLogger('standard')
+
+def add_option(option: WebDriverOptions, argument, browser: str = 'browser'):
+    try:
+        getattr(option, 'add_argument')(argument)
+    except AttributeError as err:
+        logger.warning(
+            "%s: '%s' does'nt support adding options arguments",
+            err,
+            browser
+        )
+        return None
+    return option
 
 
 class WebDrivers:
@@ -243,31 +257,38 @@ class WebDriverFactory(SeleniumWebDriver):
                 keep_alive: bool = True,
                 extensions: List[str | Path] = None,
                 **kwargs,) -> WebDriver:
+        
         cls_properties = {
             name: getattr(cls, name)
             for name in dir(cls) if not match("__.*__", name)
         }
         driver, options_class, service, manager = WebDrivers().get(browser)
         options_obj: WebDriverOptions = options_class()
+        
         if browser in DEFAULT_ARGUMENTS:
             if options_arguments is None:
                 options_arguments = []
             options_arguments.extend(list(DEFAULT_ARGUMENTS[browser]))
+       
+        user_agent = None
+        user_agent_string = None
+        profile_name = None
         if options_arguments:
             if not isinstance(options_arguments, list):
                 raise TypeError("'options_arguments' must be a list")
             if not all(isinstance(item, str) for item in options_arguments):
                 raise TypeError("'options_arguments' must be a list of str")
             for argument in options_arguments:
-                try:
-                    getattr(options_obj, 'add_argument')(argument)
-                except AttributeError as err:
-                    logger.warning(
-                        "%s: '%s' does'nt support adding options arguments",
-                        err,
-                        browser
-                    )
+                if user_agent_string is None and 'user-agent' in argument:
+                    user_agent_string = argument.split("=")[-1]
+                    continue
+                if profile_name is None and 'profile-directory' in argument:
+                    profile_name = argument.split("=")[-1]
+                options_obj = add_option(options_obj, argument, browser)
+                if options_obj is None:
+                    options_obj: WebDriverOptions = options_class()
                     break
+            
         if 'chrome' in browser and 'experimental_options' in kwargs:
             for name, value in kwargs['experimental_options'].items():
                 options_obj.add_experimental_option(name, value)
@@ -292,15 +313,36 @@ class WebDriverFactory(SeleniumWebDriver):
                             browser
                         )
                         break
+        
         executable_path = None
+        user_agent = UserAgent()
+        
         if 'remote' in browser:
             capabilities = SELENOID_CAPABILITIES
+            for option in options_obj.arguments:
+                if '--user-data-dir' in option:
+                    capabilities['selenoid:options']['env'] = (
+                        [f'BROWSER_PROFILE_DIR={option.split("=")[-1]}']
+                    )
+                    if profile_name is None:
+                        profile_name = DEFAULT_PROFILE
+                    break
             if 'capabilities' in kwargs:
                 capabilities.update(kwargs['capabilities'])
             for name, value in capabilities.items():
                 options_obj.set_capability(name, value)
             if 'command_executor' not in kwargs:
                 kwargs['command_executor'] = "http://0.0.0.0:4444/wd/hub"
+        
+        if profile_name is not None:
+            user_agent_string = user_agent.get_hashed(profile_name)
+        if user_agent_string is None:
+            user_agent_string = user_agent.get_random()
+        argument = f"--user-agent={user_agent_string}"
+        options_obj = add_option(options_obj, argument, browser)
+        if options_obj is None:
+            options_obj: WebDriverOptions = options_class()
+
         if 'command_executor' not in kwargs:  # other wise it is remote conn
             if hasattr(manager, 'install'):
                 executable_path = manager().install()
@@ -309,6 +351,7 @@ class WebDriverFactory(SeleniumWebDriver):
             else:
                 service = service(executable_path)
             kwargs['service'] = service
+
         return type(cls.__name__, (driver,), cls_properties)(
             *args,
             options=options_obj,
