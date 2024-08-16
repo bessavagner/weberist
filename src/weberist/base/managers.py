@@ -44,7 +44,11 @@ from weberist.generic.types import (
     WebDriverServices,
     WebDriverManagers
 )
-from weberist.generic.constants import SUPPORTED_BROWSERS, DEFAULT_ARGUMENTS
+from weberist.generic.constants import (
+    SUPPORTED_BROWSERS,
+    DEFAULT_ARGUMENTS,
+    SELENOID_CAPABILITIES,
+)
 
 logger = logging.getLogger('standard')
 
@@ -99,6 +103,7 @@ class WebDrivers:
     __chrome: Chrome = Chrome
     __safari: Safari = Safari
     __edge: Edge = Edge
+    __chrome_remote: SeleniumWebDriver = SeleniumWebDriver
     __firefox_options: FirefoxOptions = FirefoxOptions
     __chrome_options: ChromeOptions = ChromeOptions
     __safari_options: SafariOptions = SafariOptions
@@ -128,6 +133,10 @@ class WebDrivers:
     @property
     def edge(self,) -> Edge:
         return self.__edge
+
+    @property
+    def chrome_remote(self,) -> SeleniumWebDriver:
+        return self.__chrome_remote
 
     @property
     def firefox_options(self,) -> FirefoxOptions:
@@ -210,7 +219,10 @@ class WebDrivers:
             raise AttributeError(
                 f'WebDrivers does not implement driver for {browser}'
             )
+            
         driver = getattr(self, browser)
+        if 'remote' in browser:
+            browser = browser.split('_')[0]
         option = getattr(self, f"{browser}_options")
         service = getattr(self, f"{browser}_service")
         manager = getattr(self, f"{browser}_manager")
@@ -256,7 +268,7 @@ class WebDriverFactory(SeleniumWebDriver):
                         browser
                     )
                     break
-        if browser == 'chrome' and 'experimental_options' in kwargs:
+        if 'chrome' in browser and 'experimental_options' in kwargs:
             for name, value in kwargs['experimental_options'].items():
                 options_obj.add_experimental_option(name, value)
             kwargs.pop('experimental_options')
@@ -281,6 +293,14 @@ class WebDriverFactory(SeleniumWebDriver):
                         )
                         break
         executable_path = None
+        if 'remote' in browser:
+            capabilities = SELENOID_CAPABILITIES
+            if 'capabilities' in kwargs:
+                capabilities.update(kwargs['capabilities'])
+            for name, value in capabilities.items():
+                options_obj.set_capability(name, value)
+            if 'command_executor' not in kwargs:
+                kwargs['command_executor'] = "http://0.0.0.0:4444/wd/hub"
         if 'command_executor' not in kwargs:  # other wise it is remote conn
             if hasattr(manager, 'install'):
                 executable_path = manager().install()

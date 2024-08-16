@@ -1,6 +1,7 @@
 import sys
 
 from weberist.utils.helpers import SelectorType
+from weberist.base.config import CHROME_VERSIONS
 
 OPERATING_SYSTEM = sys.platform
 
@@ -29,6 +30,15 @@ SUPPORTED_BROWSERS: tuple[str] = (
     "safari",
     "edge"
 )
+
+SELENOID_CAPABILITIES = {
+    "browserName": "chrome",
+    "browserVersion": f"chrome_{CHROME_VERSIONS[-1]}.0",
+    "selenoid:options": {
+        "enableVideo": False,
+        "enableVNC": True,
+    }
+}
 
 DEFAULT_ARGUMENTS = {
     SUPPORTED_BROWSERS[1]: (

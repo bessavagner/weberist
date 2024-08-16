@@ -9,7 +9,7 @@ services:
 
   selenoid:
     image: "aerokube/selenoid:latest"
-    container_name: weberist-selenoid
+    container_name: {container_selenoid}
     volumes:
       - ".:/etc/selenoid"
       - "./target:/output"
@@ -27,7 +27,7 @@ services:
   
   selenoid-ui:
     image: "aerokube/selenoid-ui:latest"
-    container_name: weberist-selenoid-ui
+    container_name: {container_selenoid_ui}
     links:
       - selenoid
     networks:

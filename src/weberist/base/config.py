@@ -7,7 +7,10 @@ ROOT_DIR = BASE_DIR.parent
 DATA_DIR = BASE_DIR.parent / 'data'
 DOCKER_DIR = BASE_DIR.parent / 'docker'
 CHROME_IMAGE = 'weberist-chrome_{version}.0'
+DOCKER_COMPOSE = 'docker-compose.yml'
 DOCKER_NETWORK = 'weberist'
+CONTAINER_SELENOID = 'weberist-selenoid'
+CONTAINER_SELENOID_UI = 'weberist-selenoid-ui'
 CHROME_VERSIONS = tuple(str(i) for i in range(48, 128))
 
 LOG = {

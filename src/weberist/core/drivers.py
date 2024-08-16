@@ -14,8 +14,13 @@ class ChromeDriver(BaseDriver):
                  keep_alive: bool = True,
                  quit_on_failure: bool = False,
                  timeout: int = 20,
+                 remote: bool = False,
                  **kwargs) -> None:
+        browser = 'chrome'
+        if remote:
+            browser = 'chrome_remote'
         super().__init__(
+                browser=browser,
                 options_arguments=options_arguments,
                 extensions=extensions,
                 services_kwargs=services_kwargs,
@@ -31,7 +36,11 @@ class ChromeDriver(BaseDriver):
                 extensions: List[str | Path] = None,
                 services_kwargs: dict[str, Any] = None,
                 keep_alive: bool = True,
+                remote: bool = False,
                 **kwargs) -> Chrome:
+        browser = 'chrome'
+        if remote:
+            browser = 'chrome_remote'
         experimental_options = {
             "excludeSwitches": ["enable-automation"],
             "useAutomationExtension": False
@@ -40,6 +49,7 @@ class ChromeDriver(BaseDriver):
         return super().__new__(
             cls,
             *args,
+            browser=browser,
             options_arguments=options_arguments,
             extensions=extensions,
             services_kwargs=services_kwargs,
