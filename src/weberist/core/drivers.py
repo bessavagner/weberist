@@ -4,6 +4,8 @@ from pathlib import Path
 from weberist.base.drivers import BaseDriver
 from weberist.generic.types import Chrome
 
+from weberist.base.data import ProfileStorageBackend
+
 
 class ChromeDriver(BaseDriver):
     
@@ -19,6 +21,11 @@ class ChromeDriver(BaseDriver):
         browser = 'chrome'
         if remote:
             browser = 'chrome_remote'
+        if 'profile' in kwargs:
+            target_path = Path('.')
+            if 'localstorage' in kwargs:
+                target_path = Path(kwargs['localstorage'])
+            self.profile_backend = ProfileStorageBackend(target_path)
         super().__init__(
                 browser=browser,
                 options_arguments=options_arguments,
@@ -46,6 +53,18 @@ class ChromeDriver(BaseDriver):
             "useAutomationExtension": False
         }
         kwargs.update({"experimental_options": experimental_options})
+        if 'profile' in kwargs:
+            target_path = Path('.')
+            if 'localstorage' in kwargs:
+                target_path = Path(kwargs['localstorage'])
+                if options_arguments is None:
+                    options_arguments.append = []
+                options_arguments.append(
+                    f"--user-data-dir={target_path.absolute()}"
+                )
+            options_arguments.append(
+                f"--profile-directory={kwargs['profile']}"
+            )
         return super().__new__(
             cls,
             *args,
