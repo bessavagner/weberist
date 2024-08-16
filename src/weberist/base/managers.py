@@ -49,21 +49,24 @@ from weberist.generic.constants import (
     DEFAULT_ARGUMENTS,
     SELENOID_CAPABILITIES,
 )
-from .data import UserAgent
+from .data import UserAgent, WindowSize
 from .config import DEFAULT_PROFILE
 
 logger = logging.getLogger('standard')
 
-def add_option(option: WebDriverOptions, argument, browser: str = 'browser'):
-    try:
-        getattr(option, 'add_argument')(argument)
-    except AttributeError as err:
-        logger.warning(
-            "%s: '%s' does'nt support adding options arguments",
-            err,
-            browser
-        )
-        return None
+def add_option(option: WebDriverOptions, arguments, browser: str = 'browser'):
+    if isinstance(arguments, str):
+        arguments = arguments.split(",")
+    for argument in arguments:
+        try:
+            getattr(option, 'add_argument')(argument)
+        except AttributeError as err:
+            logger.warning(
+                "%s: '%s' does'nt support adding options arguments",
+                err,
+                browser
+            )
+            return None
     return option
 
 
@@ -271,7 +274,9 @@ class WebDriverFactory(SeleniumWebDriver):
             options_arguments.extend(list(DEFAULT_ARGUMENTS[browser]))
        
         user_agent = None
+        windows_size = None
         user_agent_string = None
+        windows_size_string = None
         profile_name = None
         if options_arguments:
             if not isinstance(options_arguments, list):
@@ -281,6 +286,9 @@ class WebDriverFactory(SeleniumWebDriver):
             for argument in options_arguments:
                 if user_agent_string is None and 'user-agent' in argument:
                     user_agent_string = argument.split("=")[-1]
+                    continue
+                if windows_size_string is None and 'windows-size' in argument:
+                    windows_size_string = argument.split("=")[-1]
                     continue
                 if profile_name is None and 'profile-directory' in argument:
                     profile_name = argument.split("=")[-1]
@@ -316,6 +324,7 @@ class WebDriverFactory(SeleniumWebDriver):
         
         executable_path = None
         user_agent = UserAgent()
+        windows_size = WindowSize()
         
         if 'remote' in browser:
             capabilities = SELENOID_CAPABILITIES
@@ -336,10 +345,16 @@ class WebDriverFactory(SeleniumWebDriver):
         
         if profile_name is not None:
             user_agent_string = user_agent.get_hashed(profile_name)
+            windows_size_string = windows_size.get_hashed(profile_name)
         if user_agent_string is None:
             user_agent_string = user_agent.get_random()
-        argument = f"--user-agent={user_agent_string}"
-        options_obj = add_option(options_obj, argument, browser)
+        if windows_size_string is None:
+            windows_size_string = windows_size.get_random()
+        arguments = [
+            f"--user-agent={user_agent_string}",
+            f"--windows-size={user_agent_string}"
+        ]
+        options_obj = add_option(options_obj, arguments, browser)
         if options_obj is None:
             options_obj: WebDriverOptions = options_class()
 
