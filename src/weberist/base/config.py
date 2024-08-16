@@ -11,6 +11,7 @@ DOCKER_COMPOSE = 'docker-compose.yml'
 DOCKER_NETWORK = 'weberist'
 CONTAINER_SELENOID = 'weberist-selenoid'
 CONTAINER_SELENOID_UI = 'weberist-selenoid-ui'
+DEFAULT_PROFILE = 'Profile'
 CHROME_VERSIONS = tuple(str(i) for i in range(48, 128))
 
 LOG = {
