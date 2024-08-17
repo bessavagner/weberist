@@ -104,6 +104,7 @@ def create_selenoid_chrome_compose(name: str = None,
         
         dockerfile_content = docker_compose_file.read().format(
             network=network_name,
+            # NOTE: conflict if already created:
             container_selenoid=CONTAINER_SELENOID,
             container_selenoid_ui=CONTAINER_SELENOID_UI,
         )
@@ -228,6 +229,8 @@ def run_selenoid_driver_task(driver_task: Callable,
         create_compose = True
         if target_path is None:
             target_path = DOCKER_DIR
+        if isinstance(target_path, str):
+            target_path = Path(target_path)
         if dockercompose_name is None:
             dockercompose_name = DOCKER_COMPOSE
         for item in target_path.glob("*"):
@@ -262,8 +265,7 @@ def run_selenoid_driver_task(driver_task: Callable,
         (
             process, stdout_thread, stderr_thread, clean_up
         ) = run_docker_compose(path, build)
-        if build:
-            wait_selenoid()
+        wait_selenoid()
 
     try:
         driver = ChromeDriver(remote=True)
