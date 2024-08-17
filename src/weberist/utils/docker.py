@@ -141,6 +141,7 @@ def run_docker_compose(path: str = None, build: bool = False):
         command = command[:2] + ["-f", str(path)] + command[2:]
     if not build:
         command.pop()
+    print(f"Build: {build}")
     print(" ".join(command))
     process = subprocess.Popen(
         command,
@@ -261,7 +262,8 @@ def run_selenoid_driver_task(driver_task: Callable,
         (
             process, stdout_thread, stderr_thread, clean_up
         ) = run_docker_compose(path, build)
-        wait_selenoid()
+        if build:
+            wait_selenoid()
 
     try:
         driver = ChromeDriver(remote=True)
