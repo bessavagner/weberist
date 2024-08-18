@@ -95,7 +95,25 @@ if [ "$ENABLE_VNC" == "true" ]; then
     X11VNC_PID=$!
 fi
 
-DISPLAY="$DISPLAY" /usr/bin/chromedriver --port=4444 --allowed-ips='' --allowed-origins='*' ${DRIVER_ARGS} &
+# Backup the original file
+cp /usr/bin/chromedriver /usr/bin/chromedriver.bak
+
+# Create a hex dump of the executable
+xxd /usr/bin/chromedriver > chromedriver.hex
+
+# Replace occurrences of $cdc_ with xymu in the hex dump
+sed -i 's/24 63 64 63 5f/78 79 6d 75/g' chromedriver.hex
+
+# Convert the modified hex dump back to binary
+xxd -r chromedriver.hex > /usr/bin/chromedriver
+
+# Set the executable permissions
+chmod +x /usr/bin/chromedriver
+
+# Clean up temporary files
+rm chromedriver.hex
+
+DISPLAY="$DISPLAY" /usr/bin/chromedriver --port=4444 --allowed-ips='' --allowed-origins='*' ${DRIVER_ARGS} --disable-blink-features=AutomationControlled --disable-infobars --disable-extensions --no-sandbox --disable-dev-shm-usage --disable-gpu --remote-debugging-port=0 &
 DRIVER_PID=$!
 
 wait

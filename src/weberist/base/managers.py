@@ -301,6 +301,7 @@ class WebDriverFactory(SeleniumWebDriver):
             for name, value in kwargs['experimental_options'].items():
                 options_obj.add_experimental_option(name, value)
             kwargs.pop('experimental_options')
+        
         if extensions:
             if not isinstance(extensions, list):
                 raise TypeError("'extensions' must be a list")
@@ -342,6 +343,7 @@ class WebDriverFactory(SeleniumWebDriver):
                 options_obj.set_capability(name, value)
             if 'command_executor' not in kwargs:
                 kwargs['command_executor'] = "http://0.0.0.0:4444/wd/hub"
+        logger.debug(kwargs['command_executor'])
         
         if profile_name is not None:
             user_agent_string = user_agent.get_hashed(profile_name)

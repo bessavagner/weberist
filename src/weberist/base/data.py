@@ -185,11 +185,11 @@ class WindowSize(BaseData):
     HASHED = "HASHED"
 
     window_size_1920_1080 = [1920, 1080, ]
-    window_size_1366_768 =  [1366, 768, ]
-    window_size_1536_864 =  [1536, 864, ]
-    window_size_1280_720 =  [1280, 720, ]
-    window_size_1440_900 =  [1440, 900, ]
-    window_size_1600_900 =  [1600, 900, ]
+    window_size_1366_768 = [1366, 768, ]
+    window_size_1536_864 = [1536, 864, ]
+    window_size_1280_720 = [1280, 720, ]
+    window_size_1440_900 = [1440, 900, ]
+    window_size_1600_900 = [1600, 900, ]
 
     def get_data(self):
 
@@ -210,8 +210,8 @@ class WindowSize(BaseData):
         result = _1920_1080 + _1366_768 + _1536_864 + _1280_720 + _1440_900 + _1600_900
         return result
     
-    def window_size_to_string(window_size):
-        width, height = window_size 
+    def window_size_to_string(self, window_size):
+        width, height = window_size
         return f'{width},{height}'
 
 

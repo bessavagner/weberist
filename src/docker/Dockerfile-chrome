@@ -18,7 +18,10 @@ RUN addgroup --gid $ID_GROUP $GROUP \
 COPY {localstorage} "$DATA_DIR/localstorage"
 COPY {entrypoint} "$SRC_DIR"
 RUN chown -R $ID_USER:$ID_GROUP "$USER_DIR" \
+    && chown -R $ID_USER:$ID_GROUP "$DATA_DIR" \
     && chmod 755 "$SRC_DIR/chrome-entrypoint.sh"
+
+RUN apt-get update && apt-get install -y xxd sed
 
 USER $USER
 WORKDIR "$SRC_DIR"

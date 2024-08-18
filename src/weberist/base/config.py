@@ -6,6 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = BASE_DIR.parent
 DATA_DIR = BASE_DIR.parent / 'data'
 DOCKER_DIR = BASE_DIR.parent / 'docker'
+DOCKER_CHROME_LOCALSTORAGE = DOCKER_DIR / 'data/localstorage'
 CHROME_IMAGE = 'weberist-chrome_{version}.0'
 DOCKER_COMPOSE = 'docker-compose.yml'
 DOCKER_NETWORK = 'weberist'
@@ -53,11 +54,6 @@ LOG = {
         "debug": {
             "class": "logging.StreamHandler",
             "formatter": "debug",
-        },
-        "file": {
-            "class": "logging.FileHandler",
-            "filename": str(BASE_DIR.parent / "data/logs/debug.log"),
-            "formatter": "debug",
         }
     },
     "loggers": {
@@ -68,7 +64,7 @@ LOG = {
             "propagate": False,
         },
         "debugger": {
-            "handlers": ["file", "debug"],
+            "handlers": ["debug"],
             "level": "DEBUG",
             "propagate": False,
         }
