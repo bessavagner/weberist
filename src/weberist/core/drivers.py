@@ -53,20 +53,17 @@ class ChromeDriver(BaseDriver):
             "useAutomationExtension": False
         }
         kwargs.update({"experimental_options": experimental_options})
+        options_arguments = options_arguments or []
         if 'profile' in kwargs:
-            target_path = Path('.')
-            if 'localstorage' in kwargs:
-                target_path = Path(kwargs['localstorage'])
-                if options_arguments is None:
-                    options_arguments = []
-                kwargs.pop('localstorage')
-            options_arguments.append(
-                f"--user-data-dir={target_path.absolute()}"
-            )
             options_arguments.append(
                 f"--profile-directory={kwargs['profile']}"
             )
             kwargs.pop('profile')
+        if 'localstorage' in kwargs:
+            options_arguments.append(
+                f"--user-data-dir={kwargs['localstorage']}"
+            )
+            kwargs.pop('localstorage')
         return super().__new__(
             cls,
             *args,
