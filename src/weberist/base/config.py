@@ -4,15 +4,16 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = BASE_DIR.parent
-DATA_DIR = BASE_DIR.parent / 'data'
-DOCKER_DIR = BASE_DIR.parent / 'docker'
-DOCKER_CHROME_LOCALSTORAGE = DOCKER_DIR / 'data/localstorage'
+DATA_DIR = ROOT_DIR / 'data'
+DOCKER_DIR = ROOT_DIR / 'docker'
+DOCKER_CHROME_LOCALSTORAGE = '/usr/src/data/localstorage'
+DOCKER_FILE_CHROME = DOCKER_DIR / 'Dockerfile-chrome'
 CHROME_IMAGE = 'weberist-chrome_{version}.0'
 DOCKER_COMPOSE = 'docker-compose.yml'
 DOCKER_NETWORK = 'weberist'
 CONTAINER_SELENOID = 'weberist-selenoid'
 CONTAINER_SELENOID_UI = 'weberist-selenoid-ui'
-DEFAULT_PROFILE = 'Profile'
+DEFAULT_PROFILE = 'Profile 1'
 CHROME_VERSIONS = tuple(str(i) for i in range(48, 128))
 
 LOG = {
@@ -21,7 +22,7 @@ LOG = {
     "formatters": {
         "client": {
             "format": (
-                "%(levelname)s (%(filename)s at %(lineno)d): %(message)s"
+                "%(levelname)s (%(filename)s at line %(lineno)d): %(message)s"
             )
         },
         "standard": {
