@@ -210,7 +210,7 @@ class WindowSize(BaseData):
         result = _1920_1080 + _1366_768 + _1536_864 + _1280_720 + _1440_900 + _1600_900
         return result
     
-    def window_size_to_string(self, window_size):
+    def to_string(self, window_size):
         width, height = window_size
         return f'{width},{height}'
 

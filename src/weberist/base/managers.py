@@ -343,7 +343,6 @@ class WebDriverFactory(SeleniumWebDriver):
                 options_obj.set_capability(name, value)
             if 'command_executor' not in kwargs:
                 kwargs['command_executor'] = "http://0.0.0.0:4444/wd/hub"
-        logger.debug(kwargs['command_executor'])
         
         if profile_name is not None:
             user_agent_string = user_agent.get_hashed(profile_name)
@@ -351,10 +350,11 @@ class WebDriverFactory(SeleniumWebDriver):
         if user_agent_string is None:
             user_agent_string = user_agent.get_random()
         if windows_size_string is None:
-            windows_size_string = windows_size.get_random()
+            window_size = windows_size.get_random()
+            windows_size_string = windows_size.to_string(window_size)
         arguments = [
             f"--user-agent={user_agent_string}",
-            f"--windows-size={user_agent_string}"
+            f"--windows-size={windows_size_string}"
         ]
         options_obj = add_option(options_obj, arguments, browser)
         if options_obj is None:
