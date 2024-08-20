@@ -5,6 +5,7 @@ import signal
 import logging
 import subprocess
 import threading
+from shutil import copyfile
 from pathlib import Path
 from typing import Callable
 
@@ -12,7 +13,9 @@ import docker
 
 from weberist import ChromeDriver
 from weberist.base.config import (
+    DATA_DIR,
     DOCKER_DIR,
+    DOCKER_FILE_CHROME,
     DOCKER_CHROME_LOCALSTORAGE,
     CHROME_IMAGE,
     DOCKER_NETWORK,
@@ -34,6 +37,7 @@ client_logger.setLevel(logging.DEBUG)
 
 
 def create_network(name: str = None, client: docker.DockerClient = None):
+    
     if name is None:
         name = DOCKER_NETWORK
     if client is None:
@@ -44,33 +48,47 @@ def create_network(name: str = None, client: docker.DockerClient = None):
             return network
     return client.networks.create(name)
 
-def create_chrome_dockerfile(name: str = None, chrome_version: str = None):
+def create_chrome_dockerfile(name: str = None,
+                             chrome_version: str = None,
+                             target_path: str | Path = None):
 
-    path = DOCKER_DIR / "Dockerfile-chrome"
-    if name is None:
-        name = 'Dockerfile'
-    if chrome_version is None:
-        chrome_version = CHROME_VERSIONS[-1]
-    with open(path, 'r', encoding='utf-8') as dockerfile_chrome:
+    chrome_version = chrome_version or CHROME_VERSIONS[-1]
+    target_path = target_path or DATA_DIR
+    if not isinstance(target_path, Path):
+        target_path = Path(target_path)
+    
+    with open(DOCKER_FILE_CHROME, 'r', encoding='utf-8') as dockerfile_chrome:
+        localstorage = target_path / 'localstorage'
+        localstorage.mkdir(parents=True, exist_ok=True)
+        entrypoint = target_path / 'chrome-entrypoint.sh'
+        copyfile(DOCKER_DIR / 'data/chrome-entrypoint.sh', entrypoint)
         dockerfile_content = dockerfile_chrome.read().format(
             version=chrome_version,
-            localstorage='./data/localstorage',
-            entrypoint='./data/chrome-entrypoint.sh'
+            localstorage='./localstorage',
+            entrypoint='./chrome-entrypoint.sh'
         )
-        path = DOCKER_DIR / name
-        with open(path, 'w', encoding='utf-8') as dockerfile:
+        
+        name = name or 'Dockerfile'
+        target_path = target_path or DOCKER_DIR
+        if not isinstance(target_path, Path):
+            target_path = Path(target_path)
+        with open(target_path / name, 'w', encoding='utf-8') as dockerfile:
             dockerfile.write(dockerfile_content)
 
 def create_browsers_json(chrome_version: str = None,
                          target_path: str | Path = '.'):
     
-    if chrome_version is None:
-        chrome_version = CHROME_VERSIONS[-1]
+    chrome_version = chrome_version or CHROME_VERSIONS[-1]
+    target_path = target_path or DATA_DIR
+    if not isinstance(target_path, Path):
+        target_path = Path(target_path)
 
     browsers_template = DOCKER_DIR / 'browsers'
     browsers_json = target_path / 'browsers.json'
     with open(browsers_template, encoding='utf-8') as json_template:
-        browsers = json_template.read().format(version=chrome_version)
+        browsers = json_template.read().format(
+            version=chrome_version,
+        )
         content = json.loads(browsers)
         with open(browsers_json, 'w', encoding='utf-8') as json_file:
             json.dump(content, json_file, indent=4, ensure_ascii=False)
@@ -79,30 +97,23 @@ def create_selenoid_chrome_compose(name: str = None,
                                    dockerfile_name: str = None,
                                    network_name: str = None,
                                    chrome_version: str = None,
-                                   target_path: str | Path = '.'):
+                                   target_path: str | Path = None):
     
+    target_path = target_path or DATA_DIR
     if isinstance(target_path, str):
         target_path = Path(target_path)
-    if not target_path.exists():
-        target_path.mkdir()
-    if not target_path.is_dir():
-        raise FileExistsError(f"A file named '{target_path}' exists.")
+    target_path.mkdir(parents=True, exist_ok=True)
     target = target_path / 'target'
     video = target_path / 'video'
     logs = target_path / 'logs'
-    if not target.exists():
-        target.mkdir()
-    if not video.exists():
-        video.mkdir()
-    if not logs.exists():
-        logs.mkdir()
+    target.mkdir(parents=True, exist_ok=True)
+    video.mkdir(parents=True, exist_ok=True)
+    logs.mkdir(parents=True, exist_ok=True)
     
-    if name is None:
-        name = DOCKER_COMPOSE
-    if network_name is None:
-        network_name = DOCKER_NETWORK
+    name = name or DOCKER_COMPOSE
+    network_name = network_name or DOCKER_NETWORK
     
-    create_chrome_dockerfile(dockerfile_name, chrome_version)
+    create_chrome_dockerfile(dockerfile_name, chrome_version, target_path)
     create_browsers_json(chrome_version, target_path)
 
     template_compose = DOCKER_DIR / "docker-compose-selenoid.yml"
@@ -119,11 +130,13 @@ def create_selenoid_chrome_compose(name: str = None,
             target.write(dockerfile_content)
 
 def create_chrome_image(chrome_version: str = CHROME_VERSIONS[-1],
-                        client: docker.DockerClient = None):
+                        client: docker.DockerClient = None,
+                        target_path: str | Path = None):
     
-    if client is None:
-        client = docker.from_env()
-    
+    client = client or docker.from_env()
+    target_path = target_path or DATA_DIR
+    if isinstance(target_path, str):
+        target_path = Path(target_path)
     image = None
     log = [{}]
     create = True
@@ -137,7 +150,7 @@ def create_chrome_image(chrome_version: str = CHROME_VERSIONS[-1],
     if create:
         client_logger.info("Creating chrome image '%s'", name)
         image, log = client.images.build(
-            path=str(DOCKER_DIR.absolute()),
+            path=str(target_path.absolute()),
             tag=name,
             rm=True,
             nocache=True,
@@ -150,11 +163,13 @@ def setup_selenoid_chrome(dockerfile_name: str = None,
                           dockercompose_name: str = None,
                           network_name: str = None,
                           chrome_version: str = CHROME_VERSIONS[-1],
-                          target_path: str | Path = '.',
+                          target_path: str | Path = None,
                           client: docker.DockerClient = None):
     
-    if client is None:
-        client = docker.from_env()
+    client = client or docker.from_env()
+    target_path = target_path or DATA_DIR
+    if isinstance(target_path, str):
+        target_path = Path(target_path)
     
     network = create_network(name=network_name, client=client)
     
@@ -257,12 +272,10 @@ def run_selenoid_driver_task(driver_task: Callable,
             is_selenoid_up = True
             break
 
-    if target_path is None:
-        target_path = DOCKER_DIR
+    dockercompose_name = dockercompose_name or DOCKER_COMPOSE
+    target_path = target_path or DATA_DIR  # DOCKER_DIR
     if isinstance(target_path, str):
         target_path = Path(target_path)
-    if dockercompose_name is None:
-        dockercompose_name = DOCKER_COMPOSE
     
     setup_selenoid_chrome(
         dockerfile_name,
@@ -293,9 +306,8 @@ def run_selenoid_driver_task(driver_task: Callable,
     try:
         if chrome_kwargs is None:
             chrome_kwargs = {}
-        # TODO: include volume in browsers.json
-        # if 'localstorage' not in chrome_kwargs:
-        #     chrome_kwargs['localstorage'] = DOCKER_CHROME_LOCALSTORAGE
+        if 'localstorage' not in chrome_kwargs:
+            chrome_kwargs['localstorage'] = DOCKER_CHROME_LOCALSTORAGE
         driver = ChromeDriver(remote=True, **chrome_kwargs)
         result = driver_task(driver, *args, **kwargs)
         return result
