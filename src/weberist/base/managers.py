@@ -276,7 +276,7 @@ class WebDriverFactory(SeleniumWebDriver):
         user_agent = None
         windows_size = None
         user_agent_string = None
-        windows_size_string = None
+        windows_size_ = None
         profile_name = None
         if options_arguments:
             if not isinstance(options_arguments, list):
@@ -287,8 +287,8 @@ class WebDriverFactory(SeleniumWebDriver):
                 if user_agent_string is None and 'user-agent' in argument:
                     user_agent_string = argument.split("=")[-1]
                     continue
-                if windows_size_string is None and 'windows-size' in argument:
-                    windows_size_string = argument.split("=")[-1]
+                if windows_size_ is None and 'windows-size' in argument:
+                    windows_size_ = argument.split("=")[-1]
                     continue
                 if profile_name is None and 'profile-directory' in argument:
                     profile_name = argument.split("=")[-1]
@@ -346,15 +346,17 @@ class WebDriverFactory(SeleniumWebDriver):
         
         if profile_name is not None:
             user_agent_string = user_agent.get_hashed(profile_name)
-            windows_size_string = windows_size.get_hashed(profile_name)
+            windows_size_ = windows_size.get_hashed(profile_name)
         if user_agent_string is None:
             user_agent_string = user_agent.get_random()
-        if windows_size_string is None:
-            window_size = windows_size.get_random()
-            windows_size_string = windows_size.to_string(window_size)
+        if windows_size_ is None:
+            windows_size_ = windows_size.get_random()
+        windows_size_string = windows_size_
+        if not isinstance(windows_size_, str):
+            windows_size_string = windows_size.to_string(windows_size_)
         arguments = [
             f"--user-agent={user_agent_string}",
-            f"--windows-size={windows_size_string}"
+            f"--window-size={windows_size_string}"
         ]
         options_obj = add_option(options_obj, arguments, browser)
         if options_obj is None:

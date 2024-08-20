@@ -1,10 +1,12 @@
 import json
-from typing import Any
+import platform
+from os import name
 from pathlib import Path
 from copy import deepcopy
 from itertools import cycle
 from datetime import datetime
 from random import choice, shuffle
+from typing import Any, List, Optional, Dict
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -61,122 +63,108 @@ def hash_string(text: str) -> int:
 class BaseData:
     def __init__(self):
         self.has_initialized = True
-        data = self.get_data()
-        self.set_data(data)
+        self.data = self.get_data()
+        self.set_data(self.data)
 
-    def get_data(self):
+    def get_data(self) -> List[Any]:
         """Abstract method to get data. Should be overridden in subclass."""
         raise NotImplementedError
 
     @property
-    def has_items(self):
-        return len(self.data) > 0
+    def has_items(self) -> bool:
+        return bool(self.data)
 
-    def set_data(self, data):
+    def set_data(self, data: List[Any]) -> None:
+        """Initialize or reset data and its cycled version."""
         self.data = data
-        copied_list = copy_list(self.data)
-        shuffle(copied_list)
-        self.cycled_data = cycle(copied_list)
+        shuffled_data = list(data)
+        shuffle(shuffled_data)
+        self.cycled_data = cycle(shuffled_data)
 
-    def get_random_cycled(self):
+    def get_random_cycled(self) -> Optional[Any]:
+        """Get a random item from cycled data."""
         if self.has_items:
             return next(self.cycled_data)
+        return None
 
-    def get_random(self):
+    def get_random(self) -> Any:
+        """Get a random item from data."""
         return choice(self.data)
 
-    def remove_data(self, item):
-        self.set_data(delete_from_list(self.data, item))
+    def remove_data(self, item: Any) -> None:
+        """Remove an item from data and reset the cycled data."""
+        self.data = [d for d in self.data if d != item]
+        self.set_data(self.data)
 
-    def get_hashed(self, value):
+    def get_hashed(self, value: Optional[Any]) -> Any:
+        """Get a data item based on a hashed value."""
         if value is None:
             value = "_"
-        hashed_value = hash_string(value)
+        hashed_value = hash(value)
         return self.data[hashed_value % len(self.data)]
 
-    def get_n(self, n):
+    def get_n(self, n: int) -> List[Any]:
+        """Get a list of n random cycled items."""
         return [self.get_random_cycled() for _ in range(n)]
 
-    def get_hundred(self):
+    def get_hundred(self) -> List[Any]:
+        """Get a list of 100 random cycled items."""
         return self.get_n(100)
 
 
-import platform
-
-
-def get_correct_agent(windows, mac, linux):
-    """
-    Returns the user agent string based on the operating system.
-
-    Args:
-    windows (str): User agent string for Windows.
-    mac (str): User agent string for Mac.
-    linux (str): User agent string for Linux.
-
-    Returns:
-    str: User agent string based on the current operating system.
-    """
-    system = platform.system().lower()
-    if system == "windows":
+def get_correct_agent(windows: str, mac: str, linux: str) -> str:
+    """Selects the correct user agent based on the operating system."""
+    if name == 'nt':
         return windows
-    elif system == "darwin":
+    elif platform == "darwin":
         return mac
     return linux
 
+def generate_user_agents(start_version: int,
+                         end_version: int) -> Dict[str, str]:
+    """Generates a dictionary of user agents for versions in the specified range."""
+    return {
+        str(version): get_correct_agent(
+            f"Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{version}.0.0.0 Safari/537.36",
+            f"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{version}.0.0.0 Safari/537.36",
+            f"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{version}.0.0.0 Safari/537.36",
+        )
+        for version in range(start_version, end_version + 1)
+    }
+
 
 class UserAgent(BaseData):
+    
     REAL = "REAL"
     RANDOM = "RANDOM"
     HASHED = "HASHED"
 
-    google_bot = (
-        "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+    GOOGLE_BOT = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+    
+    # Use dynamically generated user agents
+    USER_AGENTS = generate_user_agents(98, 127)
+    FREQUENCIES = {str(version): 1 for version in range(98, 128)}
+    FREQUENCIES.update(
+        {
+            "127": 42,
+            "126": 22, "125": 18, "124": 31, "123": 26,
+            "122": 22, "121": 18, "120": 31, "119": 26,
+            "118": 42, "117": 10, "116": 10, "115": 5,
+            "114": 15, "113": 28, "112": 11, "111": 5,
+            "110": 28, "109": 42, "108": 22, "107": 12,
+            "106": 27, "105": 32, "104": 2, "103": 2,
+            "102": 5, "101": 8, "100": 12,
+            "99": 3, "98": 2
+        }
     )
 
-    user_agents = {
-        "106": "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.37",
-        "105": "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36",
-        "104": "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.102 Safari/537.36",
-        "103": "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.5060.53 Safari/537.36",
-        "101": "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951 Safari/537.36",
-        "100": "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896 Safari/537.36",
-        "99": "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844 Safari/537.36",
-        "98": "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758 Safari/537.36",
-        "97": "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692 Safari/537.36",
-        "96": "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664 Safari/537.36",
-        "95": "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638 Safari/537.36",
-        "94": "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606 Safari/537.36",
-    }
-
-    versions = {
-        "106": 37,
-        "105": 42,
-        "104": 2,
-        "103": 2,
-        "101": 1,
-        "99": 10,
-        "100": 1,
-        "98": 1,
-        "97": 1,
-        "96": 1,
-        "95": 1,
-        "94": 1,
-    }
-
-    def get_data(self):
-        result = []
-        for version, count in self.versions.items():
-            user_agent = get_correct_agent(
-                self.user_agents[version],
-                self.user_agents[version].replace(
-                    "Windows NT 10.0", "Macintosh; Intel Mac OS X 10_15"
-                ),
-                self.user_agents[version].replace(
-                    "Windows NT 10.0", "X11; Linux x86_64"
-                ),
-            )
-            result.extend([user_agent] * count)
-        return result
+    def get_data(self) -> List[str]:
+        """Returns a list of user agents based on predefined versions and their frequencies."""
+        return [
+            agent
+            for version, count in self.FREQUENCIES.items()
+            for agent in [self.USER_AGENTS[version]] * count
+        ]
 
 
 class WindowSize(BaseData):
