@@ -24,6 +24,7 @@ from weberist.utils.javascript import (
     DISPATCH_ENTER,
     DISPATCH_ENTER_SELECTOR,
 )
+from .data import ProfileStorageBackend
 from .managers import WebDriverFactory
 from .exceptions import (
     EXCEPTIONS,
@@ -33,53 +34,30 @@ from .exceptions import (
 )
 
 
-logger = logging.getLogger('standard')
+logger = logging.getLogger('base.drivers')
+logger.setLevel(logging.DEBUG)
 
 
 class BaseDriver(WebDriverFactory):
 
     def __init__(self,
                  *args,
-                 browser: str = 'chrome',
-                 options_arguments: List[str] = None,
-                 extensions: List[str | Path] = None,
-                 services_kwargs: dict[str, Any] = None,
-                 keep_alive: bool = True,
                  quit_on_failure: bool = False,
                  timeout: int = 20,
                  **kwargs) -> None:
-        super().__init__(
-                *args,
-                browser=browser,
-                options_arguments=options_arguments,
-                extensions=extensions,
-                services_kwargs=services_kwargs,
-                keep_alive=keep_alive,
-                **kwargs
-        )
+        
         self._quit_on_failure = quit_on_failure
         self.timeout = timeout
         self.soup = None
         self.dom = None
-
-    def __new__(cls,
-                *args,
-                browser: str = 'chrome',
-                options_arguments: List[str] = None,
-                extensions: List[str | Path] = None,
-                services_kwargs: dict[str, Any] = None,
-                keep_alive: bool = True,
-                **kwargs) -> WebDriver:
-        return super().__new__(
-            cls,
-            *args,
-            browser=browser,
-            options_arguments=options_arguments,
-            extensions=extensions,
-            services_kwargs=services_kwargs,
-            keep_alive=keep_alive,
-            **kwargs
-        )
+        self.profile_backend = None
+        
+        if 'profile' in kwargs:
+            target_path = Path('.')
+            if 'localstorage' in kwargs:
+                target_path = Path(kwargs['localstorage'])
+            self.profile_backend = ProfileStorageBackend(target_path)
+        super().__init__(*args, **kwargs)
 
     @property
     def quit_on_failure(self,):

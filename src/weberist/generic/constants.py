@@ -62,6 +62,7 @@ DEFAULT_ARGUMENTS = {
         "--disable-breakpad",
         "--password-store=basic",
         "--disable-features=IsolateOrigins,site-per-process",
+        "--disable-features=PrivacySandboxSettings4",
         "--disable-client-side-phishing-detection",
         "--use-mock-keychain",
         "--no-pings",
@@ -71,6 +72,5 @@ DEFAULT_ARGUMENTS = {
         "--disable-default-apps",
         "--disable-domain-reliability",
         "--no-default-browser-check",
-        "--disable-features=PrivacySandboxSettings4"
     ),
 }

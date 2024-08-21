@@ -16,7 +16,7 @@ framework.
 """
 import logging
 from re import match
-from typing import Any, List
+from typing import Any, List, Dict
 from pathlib import Path
 
 from weberist.generic.shortcuts import (
@@ -54,18 +54,31 @@ from .config import DEFAULT_PROFILE
 
 logger = logging.getLogger('standard')
 
-def add_option(option: WebDriverOptions, arguments, browser: str = 'browser'):
-    if isinstance(arguments, str):
-        arguments = arguments.split(",")
+def add_option(option: WebDriverOptions, arguments, browser: str = 'chrome'):
+    
+    proceed_argument = True
+    proceed_experimental = True
     for argument in arguments:
-        try:
-            getattr(option, 'add_argument')(argument)
-        except AttributeError as err:
-            logger.warning(
-                "%s: '%s' does'nt support adding options arguments",
-                err,
-                browser
-            )
+        if isinstance(argument, str) and proceed_argument:
+            try:
+                getattr(option, 'add_argument')(argument)
+            except AttributeError:
+                logger.warning("'%s' doesn't support adding option", browser)
+                proceed_argument = False
+                continue
+        if isinstance(argument, dict):
+            if 'chrome' in browser and proceed_experimental:
+                for name, value in argument.items():
+                    try:
+                        getattr(option, 'add_experimental_option')(name, value)
+                    except AttributeError:
+                        logger.warning(
+                            "'%s' doesn't support adding experimental option",
+                            browser
+                        )
+                        proceed_argument = False
+                        break
+        if not (proceed_argument or proceed_experimental):
             return None
     return option
 
@@ -203,7 +216,12 @@ class WebDrivers:
     def edge_manager(self,) -> EdgeChromiumDriverManager:
         return self.__edge_manager
 
-    def get(self, browser: str) -> tuple[
+    def get(self,
+            browser: str,
+            option_arguments: List[str] = None,
+            extensions: str | List[str] = None,
+            capabilities: Dict = None,
+            services_kwargs: Dict = None) -> tuple[
         WebDriver, WebDriverOptions, WebDriverServices, WebDriverManagers
     ]:
         """
@@ -238,83 +256,44 @@ class WebDrivers:
             )
             
         driver = getattr(self, browser)
+        option, service = self._configure(
+            browser,
+            option_arguments,
+            extensions,
+            capabilities,
+            services_kwargs
+        )
         if 'remote' in browser:
             browser = browser.split('_')[0]
-        option = getattr(self, f"{browser}_options")
-        service = getattr(self, f"{browser}_service")
-        manager = getattr(self, f"{browser}_manager")
-        return driver, option, service, manager
+        return driver, option, service
 
-
-class WebDriverFactory(SeleniumWebDriver):
-
-    def __init__(self, *args, **kwargs):
-        self.service: WebDriverServices = None
-        super().__init__(*args, **kwargs)
-
-    def __new__(cls,
-                *args,
-                browser: str = 'chrome',
-                options_arguments: List[str] = None,
-                services_kwargs: dict[str, Any] = None,
-                keep_alive: bool = True,
-                extensions: List[str | Path] = None,
-                **kwargs,) -> WebDriver:
+    def _configure(self,
+                   browser: str,
+                   option_arguments: List[str],
+                   extensions: str | List[str] = None,
+                   capabilities: Dict = None,
+                   service_kwargs: Dict = None):
         
-        cls_properties = {
-            name: getattr(cls, name)
-            for name in dir(cls) if not match("__.*__", name)
-        }
-        driver, options_class, service, manager = WebDrivers().get(browser)
-        options_obj: WebDriverOptions = options_class()
+        browser_name = browser
+        if 'remote' in browser:
+            browser_name = browser.split('_')[0]
         
-        if browser in DEFAULT_ARGUMENTS:
-            if options_arguments is None:
-                options_arguments = []
-            options_arguments.extend(list(DEFAULT_ARGUMENTS[browser]))
-       
-        user_agent = None
-        windows_size = None
-        user_agent_string = None
-        windows_size_ = None
-        profile_name = None
-        if options_arguments:
-            if not isinstance(options_arguments, list):
-                raise TypeError("'options_arguments' must be a list")
-            if not all(isinstance(item, str) for item in options_arguments):
-                raise TypeError("'options_arguments' must be a list of str")
-            for argument in options_arguments:
-                if user_agent_string is None and 'user-agent' in argument:
-                    user_agent_string = argument.split("=")[-1]
-                    continue
-                if windows_size_ is None and 'windows-size' in argument:
-                    windows_size_ = argument.split("=")[-1]
-                    continue
-                if profile_name is None and 'profile-directory' in argument:
-                    profile_name = argument.split("=")[-1]
-                options_obj = add_option(options_obj, argument, browser)
-                if options_obj is None:
-                    options_obj: WebDriverOptions = options_class()
-                    break
-            
-        if 'chrome' in browser and 'experimental_options' in kwargs:
-            for name, value in kwargs['experimental_options'].items():
-                options_obj.add_experimental_option(name, value)
-            kwargs.pop('experimental_options')
+        options_class = getattr(self, f"{browser_name}_options")
+        service_class = getattr(self, f"{browser_name}_service")
+        manager = getattr(self, f"{browser_name}_manager")
+        
+        options: WebDriverOptions = options_class()
+        option_arguments = option_arguments or []
         
         if extensions:
-            if not isinstance(extensions, list):
-                raise TypeError("'extensions' must be a list")
-            if not all(isinstance(item, (str, Path))for item in extensions):
-                raise TypeError("'extensions' must be a list of str")
-            if all(isinstance(item, Path)for item in extensions):
+            if all(isinstance(item, Path) for item in extensions):
                 argument = '--load-extension=' + ','.join(
                     [str(path) for path in extensions]
                 )
             else:
                 for argument in extensions:
                     try:
-                        getattr(options_obj, 'add_extension')(argument)
+                        getattr(options, 'add_extension')(argument)
                     except AttributeError as err:
                         logger.warning(
                             "%s: '%s' doesn't support adding extensions",
@@ -322,27 +301,26 @@ class WebDriverFactory(SeleniumWebDriver):
                             browser
                         )
                         break
-        
-        executable_path = None
+       
+        user_agent = None
+        windows_size = None
+        user_agent_string = None
+        windows_size_ = None
+        profile_name = None
+
+        for argument in option_arguments:
+            
+            if user_agent_string is None and 'user-agent' in argument:
+                user_agent_string = argument.split("=")[-1]
+                continue
+            if windows_size_ is None and 'windows-size' in argument:
+                windows_size_ = argument.split("=")[-1]
+                continue
+            if profile_name is None and 'profile-directory' in argument:
+                profile_name = argument.split("=")[-1]
+            
         user_agent = UserAgent()
         windows_size = WindowSize()
-        
-        if 'remote' in browser:
-            capabilities = SELENOID_CAPABILITIES
-            for option in options_obj.arguments:
-                if '--user-data-dir' in option:
-                    capabilities['selenoid:options']['env'] = (
-                        [f'BROWSER_PROFILE_DIR={option.split("=")[-1]}']
-                    )
-                    if profile_name is None:
-                        profile_name = DEFAULT_PROFILE
-                    break
-            if 'capabilities' in kwargs:
-                capabilities.update(kwargs['capabilities'])
-            for name, value in capabilities.items():
-                options_obj.set_capability(name, value)
-            if 'command_executor' not in kwargs:
-                kwargs['command_executor'] = "http://0.0.0.0:4444/wd/hub"
         
         if profile_name is not None:
             user_agent_string = user_agent.get_hashed(profile_name)
@@ -354,26 +332,125 @@ class WebDriverFactory(SeleniumWebDriver):
         windows_size_string = windows_size_
         if not isinstance(windows_size_, str):
             windows_size_string = windows_size.to_string(windows_size_)
-        arguments = [
-            f"--user-agent={user_agent_string}",
-            f"--window-size={windows_size_string}"
-        ]
-        options_obj = add_option(options_obj, arguments, browser)
-        if options_obj is None:
-            options_obj: WebDriverOptions = options_class()
-
-        if 'command_executor' not in kwargs:  # other wise it is remote conn
+        option_arguments.extend(
+            [
+                f"--user-agent={user_agent_string}",
+                f"--window-size={windows_size_string}"
+            ]
+        )
+        options = add_option(options, option_arguments, browser)
+        if options is None:
+            options: WebDriverOptions = options_class()
+        
+        service = None
+        if capabilities is None:
+            capabilities = {}
+        if 'remote' in browser:
+            
+            capabilities.update(SELENOID_CAPABILITIES)
+            for option in options.arguments:
+                if '--user-data-dir' in option:
+                    capabilities['selenoid:options']['env'] = (
+                        [f'BROWSER_PROFILE_DIR={option.split("=")[-1]}']
+                    )
+                    if profile_name is None:
+                        profile_name = DEFAULT_PROFILE
+                    break
+        else:
+            executable_path = None
             if hasattr(manager, 'install'):
                 executable_path = manager().install()
-            if services_kwargs:
-                service = service(executable_path, **services_kwargs)
-            else:
-                service = service(executable_path)
-            kwargs['service'] = service
+                if service_kwargs:
+                    service = service_class(executable_path, **service_kwargs)
+                else:
+                    service = service_class(executable_path)
+        
+        for name, value in capabilities.items():
+            options.set_capability(name, value)
+        
+        return options, service
 
+
+class WebDriverFactory(SeleniumWebDriver):
+
+    def __init__(self, *args, **kwargs) -> None:
+        self.service: WebDriverServices = None
+        super().__init__(*args, **kwargs)
+
+    @classmethod
+    def _set_up(cls,
+                browser: str,
+                arguments: List[str | Dict],
+                kwargs: Dict):
+        
+        cls_properties = {
+            name: getattr(cls, name)
+            for name in dir(cls) if not match("__.*__", name)
+        }
+        
+        if browser in DEFAULT_ARGUMENTS:
+            if arguments is None:
+                arguments = []
+            arguments.extend(list(DEFAULT_ARGUMENTS[browser]))
+        
+        logger.debug(kwargs)
+        if 'remote' in kwargs:
+            browser = 'chrome_remote'
+            kwargs.pop('remote')
+            if 'command_executor' not in kwargs:
+                kwargs['command_executor'] = "http://0.0.0.0:4444/wd/hub"
+        if 'profile' in kwargs:
+            arguments.append(
+                f"--profile-directory={kwargs['profile']}"
+            )
+            kwargs.pop('profile')
+        if 'localstorage' in kwargs:
+            arguments.append(
+                f"--user-data-dir={kwargs['localstorage']}"
+            )
+            kwargs.pop('localstorage')
+            
+        if 'chrome' in browser:
+            experimental_options = kwargs.pop("experimental_options", {})
+            experimental_options.update(
+                {
+                    "excludeSwitches": ["enable-automation"],
+                    "useAutomationExtension": False
+                }
+            )
+            arguments.append(experimental_options)
+
+        kwargs.pop('quit_on_failure', None)
+        kwargs.pop('timeout', None)
+        
+        return browser, cls_properties, arguments, kwargs
+    
+    def __new__(cls,
+                *args,
+                browser: str = 'chrome',
+                option_arguments: List[str] = None,
+                services_kwargs: dict[str, Any] = None,
+                keep_alive: bool = True,
+                extensions: List[str | Path] = None,
+                capabilities: Dict = None,
+                **kwargs,) -> WebDriver:
+
+        capabilities = kwargs.get('capabilities', None)
+        browser, cls_properties, option_arguments, kwargs = cls._set_up(
+            browser, option_arguments, kwargs
+        )
+        driver, options, service = WebDrivers().get(
+            browser,
+            option_arguments,
+            extensions,
+            capabilities,
+            services_kwargs
+        )
+        if service is not None:
+            kwargs['service'] = service
         return type(cls.__name__, (driver,), cls_properties)(
             *args,
-            options=options_obj,
+            options=options,
             keep_alive=keep_alive,
             **kwargs
         )
