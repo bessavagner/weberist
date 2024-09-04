@@ -371,11 +371,7 @@ class WebDrivers:
         return options, service
 
 
-class WebDriverFactory(SeleniumWebDriver):
-
-    def __init__(self, *args, **kwargs) -> None:
-        self.service: WebDriverServices = None
-        super().__init__(*args, **kwargs)
+class WebDriverFactory:
 
     @classmethod
     def _set_up(cls,
@@ -383,22 +379,18 @@ class WebDriverFactory(SeleniumWebDriver):
                 arguments: List[str | Dict],
                 kwargs: Dict):
         
+        logger.debug(cls.__name__)
         cls_properties = {
             name: getattr(cls, name)
             for name in dir(cls) if not match("__.*__", name)
         }
+        logger.debug(browser)
+        if browser.split("_")[0] in DEFAULT_ARGUMENTS:
+            arguments = arguments or []
+            arguments.extend(list(DEFAULT_ARGUMENTS[browser.split("_")[0]]))
         
-        if browser in DEFAULT_ARGUMENTS:
-            if arguments is None:
-                arguments = []
-            arguments.extend(list(DEFAULT_ARGUMENTS[browser]))
-        
-        logger.debug(kwargs)
-        if 'remote' in kwargs:
-            browser = 'chrome_remote'
-            kwargs.pop('remote')
-            if 'command_executor' not in kwargs:
-                kwargs['command_executor'] = "http://0.0.0.0:4444/wd/hub"
+        if 'remote' in browser and 'command_executor' not in kwargs:
+            kwargs['command_executor'] = "http://0.0.0.0:4444/wd/hub"
         if 'profile' in kwargs:
             arguments.append(
                 f"--profile-directory={kwargs['profile']}"
@@ -448,14 +440,12 @@ class WebDriverFactory(SeleniumWebDriver):
         )
         if service is not None:
             kwargs['service'] = service
-        return type(cls.__name__, (driver,), cls_properties)(
+
+        obj = type(cls.__name__, (driver, ), cls_properties)(
             *args,
             options=options,
             keep_alive=keep_alive,
             **kwargs
         )
 
-    @classmethod
-    def option_method(cls, method: str, value: Any) -> None:
-        # TODO
-        pass
+        return obj

@@ -2,7 +2,7 @@ import os
 import logging
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Dict
 from pathlib import Path
 
 from bs4 import BeautifulSoup
@@ -39,26 +39,59 @@ logger.setLevel(logging.DEBUG)
 
 
 class BaseDriver(WebDriverFactory):
+    
+    def __new__(cls,
+                *args,
+                browser: str = 'chrome',
+                option_arguments: List[str] = None,
+                services_kwargs: dict[str, Any] = None,
+                keep_alive: bool = True,
+                extensions: List[str | Path] = None,
+                capabilities: Dict = None,
+                quit_on_failure: bool = False,
+                timeout: int = 20,
+                profile: str = None,
+                localstorage: str = None,
+                **kwargs,):
+        
+        instance = super().__new__(
+            cls,
+            *args,
+            browser=browser,
+            option_arguments=option_arguments,
+            services_kwargs=services_kwargs,
+            keep_alive=keep_alive,
+            extensions=extensions,
+            capabilities=capabilities,
+            **kwargs,
+        )
+        
+        profile = kwargs.get('profile', None)
+        localstorage = kwargs.get('localstorage', None)
+        cls.__init__(
+            instance,
+            quit_on_failure=quit_on_failure,
+            timeout=timeout,
+            profile=profile,
+            localstorage=localstorage,
+        )
+        return instance
+
 
     def __init__(self,
-                 *args,
                  quit_on_failure: bool = False,
                  timeout: int = 20,
-                 **kwargs) -> None:
+                 profile: str = None,
+                 localstorage: str = None) -> None:
         
         self._quit_on_failure = quit_on_failure
         self.timeout = timeout
-        self.soup = None
-        self.dom = None
-        self.profile_backend = None
+        self.target_path = Path('.')
         
-        if 'profile' in kwargs:
-            target_path = Path('.')
-            if 'localstorage' in kwargs:
-                target_path = Path(kwargs['localstorage'])
-            self.profile_backend = ProfileStorageBackend(target_path)
-        super().__init__(*args, **kwargs)
-
+        if profile and localstorage:
+            self.target_path = Path(localstorage)
+            self.profile_backend = ProfileStorageBackend(self.target_path)
+    
     @property
     def quit_on_failure(self,):
         return self._quit_on_failure
@@ -463,7 +496,6 @@ class BaseDriver(WebDriverFactory):
     @quitonfailure
     def send(
         self,
-        element: WebElement,
         value: str,
         key: str | Key,
         by="id",
