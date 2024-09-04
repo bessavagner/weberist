@@ -8,8 +8,10 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 from lxml import etree
 
+
 from weberist.generic.shortcuts import WebDriverWait
 from weberist.generic.shortcuts import expected_conditions as EC
+from weberist.generic.shortcuts import SeleniumWebDriver
 from weberist.generic.constants import ATTR_SELECTOR
 from weberist.generic.types import (
     WebDriver,
@@ -38,7 +40,7 @@ logger = logging.getLogger('base.drivers')
 logger.setLevel(logging.DEBUG)
 
 
-class BaseDriver(WebDriverFactory):
+class BaseDriver(SeleniumWebDriver):
     
     def __new__(cls,
                 *args,
@@ -275,17 +277,14 @@ class BaseDriver(WebDriverFactory):
         quit_driver : bool, optional
             Whether to quit the web driver after closing the current window.
             Default is True.
-
-        Raises
-        ------
-        NoSuchWindowException
-            If the current window cannot be closed.
         """
         try:
             self.close()
         except NoSuchWindowException:
             self.switch_to_tab(0)
             self.close()
+        except WebDriverException:
+            pass
         if quit_driver:
             self.quit()
     
