@@ -14,6 +14,8 @@ browser.
 This module is part of the weberist project, a web automation and scraping
 framework.
 """
+import gc
+import socket
 import logging
 from re import match
 from typing import Any, List, Dict
@@ -54,6 +56,16 @@ from .config import DEFAULT_PROFILE
 from .stealth.tools import remove_cdc
 
 logger = logging.getLogger('standard')
+
+def free_port() -> int:
+    """Get free port."""
+    sock = socket.socket()
+    sock.bind(('localhost', 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    del sock
+    gc.collect()
+    return port
 
 def add_option(option: WebDriverOptions, arguments, browser: str = 'chrome'):
     
@@ -268,23 +280,18 @@ class WebDrivers:
             browser = browser.split('_')[0]
         return driver, option, service
 
-    def _configure(self,
-                   browser: str,
-                   option_arguments: List[str],
-                   extensions: str | List[str] = None,
-                   capabilities: Dict = None,
-                   service_kwargs: Dict = None):
-        
-        browser_name = browser
-        if 'remote' in browser:
-            browser_name = browser.split('_')[0]
-        
-        options_class = getattr(self, f"{browser_name}_options")
-        service_class = getattr(self, f"{browser_name}_service")
-        manager = getattr(self, f"{browser_name}_manager")
-        
-        options: WebDriverOptions = options_class()
-        option_arguments = option_arguments or []
+    def _configure_chrome(self,
+                          options: WebDriverOptions,
+                          manager: WebDriverManagers,
+                          service_class: type[WebDriverServices],
+                          option_arguments: List[str],
+                          extensions: str | List[str] = None,
+                          capabilities: Dict = None,
+                          service_kwargs: Dict = None,
+                          host: str = None,
+                          port: int = None,
+                          lang: str = 'en-US',
+                          remote: bool = False):
         
         if extensions:
             if all(isinstance(item, Path) for item in extensions):
@@ -293,18 +300,8 @@ class WebDrivers:
                 )
             else:
                 for argument in extensions:
-                    try:
-                        getattr(options, 'add_extension')(argument)
-                    except AttributeError as err:
-                        logger.warning(
-                            "%s: '%s' doesn't support adding extensions",
-                            err,
-                            browser
-                        )
-                        break
+                    options.add_extension(argument)
        
-        user_agent = None
-        windows_size = None
         user_agent_string = None
         windows_size_ = None
         profile_name = None
@@ -339,15 +336,17 @@ class WebDrivers:
                 f"--window-size={windows_size_string}"
             ]
         )
-        options = add_option(options, option_arguments, browser)
-        if options is None:
-            options: WebDriverOptions = options_class()
+        
+        host = host or "127.0.0.1"
+        port = port or free_port()
+        option_arguments.append(f"--remote-debugging-host={host}")
+        option_arguments.append(f"--remote-debugging-port={port}")
+        option_arguments.append(f'--lang={lang}')
         
         service = None
         if capabilities is None:
             capabilities = {}
-        if 'remote' in browser:
-            
+        if remote:
             capabilities.update(SELENOID_CAPABILITIES)
             for option in options.arguments:
                 if '--user-data-dir' in option:
@@ -365,11 +364,63 @@ class WebDrivers:
                     service = service_class(executable_path, **service_kwargs)
                 else:
                     service = service_class(executable_path)
-                if 'chrome' in browser:
-                    remove_cdc(service.path)
+                remove_cdc(service.path)
         
         for name, value in capabilities.items():
             options.set_capability(name, value)
+ 
+        options = add_option(options, option_arguments, 'chrome')
+        
+        return options, service
+
+    def _configure(self,
+                   browser: str,
+                   option_arguments: List[str],
+                   extensions: str | List[str] = None,
+                   capabilities: Dict = None,
+                   service_kwargs: Dict = None):
+        
+        browser_name = browser
+        remote = False
+        if 'remote' in browser:
+            remote = True
+            browser_name = browser.split('_')[0]
+        
+        options_class = getattr(self, f"{browser_name}_options")
+        service_class = getattr(self, f"{browser_name}_service")
+        manager = getattr(self, f"{browser_name}_manager")
+        
+        options: WebDriverOptions = options_class()
+        option_arguments = option_arguments or []
+        
+        if browser_name == 'chrome':
+            return self._configure_chrome(
+                options,
+                manager,
+                service_class=service_class,
+                option_arguments=option_arguments,
+                extensions=extensions,
+                capabilities=capabilities,
+                service_kwargs=service_kwargs,
+                remote=remote,
+            )
+
+        if extensions:
+            logger.warning("Extensions only implemented for chrome.")
+        if extensions:
+            logger.warning("Capabilities only implemented for chrome.")
+ 
+        options = add_option(options, option_arguments, browser)
+        options = options or options_class()
+        
+        service = None
+        executable_path = None
+        if hasattr(manager, 'install'):
+            executable_path = manager().install()
+            if service_kwargs:
+                service = service_class(executable_path, **service_kwargs)
+            else:
+                service = service_class(executable_path)
         
         return options, service
 
@@ -394,18 +445,18 @@ class WebDriverFactory:
         
         if 'remote' in browser and 'command_executor' not in kwargs:
             kwargs['command_executor'] = "http://0.0.0.0:4444/wd/hub"
-        if 'profile' in kwargs:
-            arguments.append(
-                f"--profile-directory={kwargs['profile']}"
-            )
-            kwargs.pop('profile')
-        if 'localstorage' in kwargs:
-            arguments.append(
-                f"--user-data-dir={kwargs['localstorage']}"
-            )
-            kwargs.pop('localstorage')
             
         if 'chrome' in browser:
+            if 'profile' in kwargs:
+                arguments.append(
+                    f"--profile-directory={kwargs['profile']}"
+                )
+                kwargs.pop('profile')
+            if 'localstorage' in kwargs:
+                arguments.append(
+                    f"--user-data-dir={kwargs['localstorage']}"
+                )
+                kwargs.pop('localstorage')
             experimental_options = kwargs.pop("experimental_options", {})
             experimental_options.update(
                 {
@@ -450,12 +501,5 @@ class WebDriverFactory:
             keep_alive=keep_alive,
             **kwargs
         )
-        # driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
-        #     'source': '''
-        #         Object.defineProperty(navigator, 'webdriver', {
-        #             get: () => undefined
-        #         });
-        #     '''
-        # })
 
         return driver
