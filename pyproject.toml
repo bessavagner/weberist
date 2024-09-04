@@ -18,6 +18,7 @@ webdriver-manager = "^4.0.2"
 docker = "^7.1.0"
 beautifulsoup4 = "^4.12.3"
 lxml = "^5.3.0"
+selenium-stealth = "^1.0.6"
 
 
 [build-system]

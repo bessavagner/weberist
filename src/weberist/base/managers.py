@@ -21,6 +21,21 @@ from re import match
 from typing import Any, List, Dict
 from pathlib import Path
 
+from selenium_stealth import (
+    with_utils,
+    chrome_app,
+    chrome_runtime,
+    iframe_content_window,
+    media_codecs,
+    navigator_permissions,
+    navigator_plugins,
+    navigator_vendor,
+    navigator_webdriver,
+    user_agent_override,
+    webgl_vendor_override,
+)
+
+
 from weberist.generic.shortcuts import (
     Firefox,
     Chrome,
@@ -234,7 +249,8 @@ class WebDrivers:
             option_arguments: List[str] = None,
             extensions: str | List[str] = None,
             capabilities: Dict = None,
-            services_kwargs: Dict = None) -> tuple[
+            services_kwargs: Dict = None,
+            **kwargs) -> tuple[
         WebDriver, WebDriverOptions, WebDriverServices, WebDriverManagers
     ]:
         """
@@ -274,7 +290,8 @@ class WebDrivers:
             option_arguments,
             extensions,
             capabilities,
-            services_kwargs
+            services_kwargs,
+            **kwargs
         )
         if 'remote' in browser:
             browser = browser.split('_')[0]
@@ -378,7 +395,8 @@ class WebDrivers:
                    option_arguments: List[str],
                    extensions: str | List[str] = None,
                    capabilities: Dict = None,
-                   service_kwargs: Dict = None):
+                   service_kwargs: Dict = None,
+                   **kwargs):
         
         browser_name = browser
         remote = False
@@ -403,6 +421,7 @@ class WebDrivers:
                 capabilities=capabilities,
                 service_kwargs=service_kwargs,
                 remote=remote,
+                **kwargs,
             )
 
         if extensions:
@@ -433,12 +452,10 @@ class WebDriverFactory:
                 arguments: List[str | Dict],
                 **kwargs):
         
-        logger.debug(cls.__name__)
         cls_properties = {
             name: getattr(cls, name)
             for name in dir(cls) if not match("__.*__", name)
         }
-        logger.debug(browser)
         if browser.split("_")[0] in DEFAULT_ARGUMENTS:
             arguments = arguments or []
             arguments.extend(list(DEFAULT_ARGUMENTS[browser.split("_")[0]]))
@@ -479,18 +496,33 @@ class WebDriverFactory:
                 keep_alive: bool = True,
                 extensions: List[str | Path] = None,
                 capabilities: Dict = None,
+                stealth: bool = True,
                 **kwargs,) -> WebDriver:
 
         capabilities = kwargs.get('capabilities', None)
         browser, cls_properties, option_arguments, kwargs = cls._set_up(
             browser, option_arguments, **kwargs
         )
+        
+        host = kwargs.pop("host", None)
+        port = kwargs.pop("port", None)
+        lang = kwargs.pop("lang", 'en')
+        # selenium-stealth arguments:
+        languages = kwargs.pop("languages", ["en-US", "en"])
+        vendor = kwargs.pop("vendor", "Google Inc.")
+        webgl_vendor = kwargs.pop("webgl_vendor", "Intel Inc.")
+        renderer = kwargs.pop("renderer", "Intel Iris OpenGL Engine")
+        run_on_insecure_origins = kwargs.pop("run_on_insecure_origins", False)
+        
         driver, options, service = WebDrivers().get(
             browser,
             option_arguments,
             extensions,
             capabilities,
-            services_kwargs
+            services_kwargs,
+            host=host,
+            port=port,
+            lang=lang,
         )
         if service is not None:
             kwargs['service'] = service
@@ -501,5 +533,23 @@ class WebDriverFactory:
             keep_alive=keep_alive,
             **kwargs
         )
-
+        if stealth:
+            if 'chrome' not in browser:
+                logger.warning('Stealthiness only supported in chrome')
+                return driver
+            if lang not in languages:
+                languages.append(lang)
+            ua_languages = ','.join(languages)
+            
+            with_utils(driver, **kwargs)
+            chrome_app(driver, **kwargs)
+            chrome_runtime(driver, run_on_insecure_origins, **kwargs)
+            iframe_content_window(driver, **kwargs)
+            media_codecs(driver, **kwargs)
+            navigator_permissions(driver, **kwargs)
+            navigator_plugins(driver, **kwargs)
+            navigator_vendor(driver, vendor, **kwargs)
+            navigator_webdriver(driver, **kwargs)
+            user_agent_override(driver, ua_languages=ua_languages, **kwargs)
+            webgl_vendor_override(driver, webgl_vendor, renderer, **kwargs)
         return driver
