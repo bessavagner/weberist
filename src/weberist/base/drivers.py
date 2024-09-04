@@ -40,7 +40,7 @@ logger = logging.getLogger('base.drivers')
 logger.setLevel(logging.DEBUG)
 
 
-class BaseDriver(SeleniumWebDriver):
+class BaseDriver(WebDriverFactory):
     
     def __new__(cls,
                 *args,
