@@ -51,6 +51,7 @@ from weberist.generic.constants import (
 )
 from .data import UserAgent, WindowSize
 from .config import DEFAULT_PROFILE
+from .stealth.tools import remove_cdc
 
 logger = logging.getLogger('standard')
 
@@ -364,6 +365,8 @@ class WebDrivers:
                     service = service_class(executable_path, **service_kwargs)
                 else:
                     service = service_class(executable_path)
+                if 'chrome' in browser:
+                    remove_cdc(service.path)
         
         for name, value in capabilities.items():
             options.set_capability(name, value)
@@ -441,11 +444,18 @@ class WebDriverFactory:
         if service is not None:
             kwargs['service'] = service
 
-        obj = type(cls.__name__, (driver, ), cls_properties)(
+        driver: WebDriver = type(cls.__name__, (driver, ), cls_properties)(
             *args,
             options=options,
             keep_alive=keep_alive,
             **kwargs
         )
+        # driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
+        #     'source': '''
+        #         Object.defineProperty(navigator, 'webdriver', {
+        #             get: () => undefined
+        #         });
+        #     '''
+        # })
 
-        return obj
+        return driver
