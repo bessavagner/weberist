@@ -1,6 +1,3 @@
-```markdown
-
-```
 # Advanced Metaprogramming in `managers` Module
 
 ## Overview
