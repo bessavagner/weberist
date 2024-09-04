@@ -24,11 +24,13 @@ DISPATCH_ENTER = """var ke = new KeyboardEvent('keydown', {
 arguments[0].dispatchEvent(ke);
 """
 DISPATCH_ENTER_SELECTOR = (
-    "var ke = new KeyboardEvent('keydown', \{"
+    "var ke = new KeyboardEvent('keydown', {{"
     "   bubbles: true, cancelable: true, keyCode: 13"
-    "\});"
+    "}});"
     "{}.dispatchEvent(ke);"
 )
+
+
 
 
 def selector(value, by) -> dict[str, str]:
