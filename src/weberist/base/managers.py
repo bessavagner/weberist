@@ -18,7 +18,7 @@ import gc
 import socket
 import logging
 from re import match
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Tuple
 from pathlib import Path
 
 from selenium_stealth import (
@@ -27,14 +27,15 @@ from selenium_stealth import (
     chrome_runtime,
     iframe_content_window,
     media_codecs,
+    navigator_languages,
     navigator_permissions,
     navigator_plugins,
     navigator_vendor,
     navigator_webdriver,
     user_agent_override,
     webgl_vendor_override,
+    window_outerdimensions,
 )
-
 
 from weberist.generic.shortcuts import (
     Firefox,
@@ -61,11 +62,8 @@ from weberist.generic.types import (
     WebDriverServices,
     WebDriverManagers
 )
-from weberist.generic.constants import (
-    SUPPORTED_BROWSERS,
-    DEFAULT_ARGUMENTS,
-    SELENOID_CAPABILITIES,
-)
+from weberist.generic.constants import DEFAULT_ARGUMENTS, SELENOID_CAPABILITIES
+
 from .data import UserAgent, WindowSize
 from .config import DEFAULT_PROFILE
 from .stealth.tools import remove_cdc
@@ -157,92 +155,40 @@ class WebDrivers:
     supported : tuple[str]
         A tuple of supported browser names.
     """
-    __firefox: Firefox = Firefox
-    __chrome: Chrome = Chrome
-    __safari: Safari = Safari
-    __edge: Edge = Edge
-    __chrome_remote: SeleniumWebDriver = SeleniumWebDriver
-    __firefox_options: FirefoxOptions = FirefoxOptions
-    __chrome_options: ChromeOptions = ChromeOptions
-    __safari_options: SafariOptions = SafariOptions
-    __edge_options: EdgeOptions = EdgeOptions
-    __firefox_service: FirefoxService = FirefoxService
-    __chrome_service: ChromeService = ChromeService
-    __safari_service: SafariService = SafariService
-    __edge_service: EdgeService = EdgeService
-    __firefox_manager: GeckoDriverManager = GeckoDriverManager
-    __chrome_manager: ChromeDriverManager = ChromeDriverManager
-    __safari_manager = None
-    __edge_manager: EdgeChromiumDriverManager = EdgeChromiumDriverManager
-    supported: tuple[str] = SUPPORTED_BROWSERS
-
-    @property
-    def firefox(self,) -> Firefox:
-        return self.__firefox
-
-    @property
-    def chrome(self,) -> Chrome:
-        return self.__chrome
-
-    @property
-    def safari(self,) -> Safari:
-        return self.__safari
-
-    @property
-    def edge(self,) -> Edge:
-        return self.__edge
-
-    @property
-    def chrome_remote(self,) -> SeleniumWebDriver:
-        return self.__chrome_remote
-
-    @property
-    def firefox_options(self,) -> FirefoxOptions:
-        return self.__firefox_options
-
-    @property
-    def chrome_options(self,) -> ChromeOptions:
-        return self.__chrome_options
-
-    @property
-    def safari_options(self,) -> SafariOptions:
-        return self.__safari_options
-
-    @property
-    def edge_options(self,) -> EdgeOptions:
-        return self.__edge_options
-
-    @property
-    def firefox_service(self,) -> FirefoxService:
-        return self.__firefox_service
-
-    @property
-    def chrome_service(self,) -> ChromeService:
-        return self.__chrome_service
-
-    @property
-    def safari_service(self,) -> SafariService:
-        return self.__safari_service
-
-    @property
-    def edge_service(self,) -> EdgeService:
-        return self.__edge_service
-
-    @property
-    def firefox_manager(self,) -> GeckoDriverManager:
-        return self.__firefox_manager
-
-    @property
-    def chrome_manager(self,) -> ChromeDriverManager:
-        return self.__chrome_manager
-
-    @property
-    def safari_manager(self,) -> None:
-        return self.__safari_manager
-
-    @property
-    def edge_manager(self,) -> EdgeChromiumDriverManager:
-        return self.__edge_manager
+    __drivers = {
+        "firefox": {
+            "driver": Firefox,
+            "options": FirefoxOptions,
+            "service": FirefoxService,
+            "manager": GeckoDriverManager
+        },
+        "chrome": {
+            "driver": Chrome,
+            "options": ChromeOptions,
+            "service": ChromeService,
+            "manager": ChromeDriverManager
+        },
+        "chrome_remote": {
+            "driver": SeleniumWebDriver,
+            "options": ChromeOptions,
+            "service": None,
+            "manager": None
+        },
+        "safari": {
+            "driver": Safari,
+            "options": SafariOptions,
+            "service": SafariService,
+            "manager": None
+        },
+        "edge": {
+            "driver": Edge,
+            "options": EdgeOptions,
+            "service": EdgeService,
+            "manager": EdgeChromiumDriverManager
+        }
+    }
+    
+    supported: Tuple[str] = tuple(__drivers.keys())
 
     def get(self,
             browser: str,
@@ -279,12 +225,12 @@ class WebDrivers:
         AttributeError
             If the specified browser is not supported.
         """
-        if not hasattr(self, browser):
+        if browser not in self.supported:
             raise AttributeError(
-                f'WebDrivers does not implement driver for {browser}'
+                f'WebDrivers does not support driver for {browser}'
             )
             
-        driver = getattr(self, browser)
+        driver = self.__drivers[browser]['driver']
         option, service = self._configure(
             browser,
             option_arguments,
@@ -404,9 +350,9 @@ class WebDrivers:
             remote = True
             browser_name = browser.split('_')[0]
         
-        options_class = getattr(self, f"{browser_name}_options")
-        service_class = getattr(self, f"{browser_name}_service")
-        manager = getattr(self, f"{browser_name}_manager")
+        options_class = self.__drivers[browser_name]['options']
+        service_class = self.__drivers[browser_name]['service']
+        manager = self.__drivers[browser_name]['manager']
         
         options: WebDriverOptions = options_class()
         option_arguments = option_arguments or []
@@ -524,32 +470,36 @@ class WebDriverFactory:
             port=port,
             lang=lang,
         )
+
         if service is not None:
             kwargs['service'] = service
 
-        driver: WebDriver = type(cls.__name__, (driver, ), cls_properties)(
+        instance: WebDriver = type(cls.__name__, (driver, ), cls_properties)(
             *args,
             options=options,
             keep_alive=keep_alive,
             **kwargs
         )
+
         if stealth:
             if 'chrome' not in browser:
                 logger.warning('Stealthiness only supported in chrome')
-                return driver
+                return instance
             if lang not in languages:
                 languages.append(lang)
             ua_languages = ','.join(languages)
             
-            with_utils(driver, **kwargs)
-            chrome_app(driver, **kwargs)
-            chrome_runtime(driver, run_on_insecure_origins, **kwargs)
-            iframe_content_window(driver, **kwargs)
-            media_codecs(driver, **kwargs)
-            navigator_permissions(driver, **kwargs)
-            navigator_plugins(driver, **kwargs)
-            navigator_vendor(driver, vendor, **kwargs)
-            navigator_webdriver(driver, **kwargs)
-            user_agent_override(driver, ua_languages=ua_languages, **kwargs)
-            webgl_vendor_override(driver, webgl_vendor, renderer, **kwargs)
-        return driver
+            with_utils(instance, **kwargs)
+            chrome_app(instance, **kwargs)
+            chrome_runtime(instance, run_on_insecure_origins, **kwargs)
+            iframe_content_window(instance, **kwargs)
+            media_codecs(instance, **kwargs)
+            navigator_languages(instance, languages, **kwargs)
+            navigator_permissions(instance, **kwargs)
+            navigator_plugins(instance, **kwargs)
+            navigator_vendor(instance, vendor, **kwargs)
+            navigator_webdriver(instance, **kwargs)
+            user_agent_override(instance, ua_languages=ua_languages, **kwargs)
+            webgl_vendor_override(instance, webgl_vendor, renderer, **kwargs)
+            window_outerdimensions(instance, **kwargs)
+        return instance
