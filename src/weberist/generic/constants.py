@@ -78,3 +78,8 @@ DEFAULT_ARGUMENTS = {
         "--no-default-browser-check",
     ),
 }
+
+LANGUAGES = {
+    'en': ["en-US", "en"],
+    'pt': ["pt-BR", "pt"],
+}
