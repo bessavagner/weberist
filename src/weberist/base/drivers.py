@@ -80,7 +80,7 @@ class BaseDriver(WebDriverFactory):
         return instance
 
 
-    def __init__(self,
+    def __init__(self: WebDriver,
                  quit_on_failure: bool = False,
                  timeout: int = 20,
                  profile: str = None,
