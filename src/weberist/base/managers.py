@@ -540,9 +540,6 @@ class WebDriverFactory:
             if lang not in languages:
                 languages.append(lang)
             ua_languages = ','.join(languages)
-            if 'remote' in browser:
-                attribute = 'execute_cdp_cmd'
-                setattr(driver, attribute, getattr(Chrome, attribute))
             
             with_utils(driver, **kwargs)
             chrome_app(driver, **kwargs)

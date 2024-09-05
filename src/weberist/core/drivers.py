@@ -3,7 +3,7 @@ from typing import List, Any, Dict
 from pathlib import Path
 
 from weberist.base.drivers import BaseDriver
-from weberist.generic.types import Chrome
+from weberist.generic.types import WebDriver
 
 from weberist.base.data import ProfileStorageBackend
 
@@ -50,3 +50,34 @@ class ChromeDriver(BaseDriver):
             localstorage=localstorage,
         )
         return instance
+
+    def execute_cdp_cmd(self: WebDriver, cmd: str, cmd_args: dict):
+        """
+        Method copied from selenium.webdriver.chromium.webdriver.ChromiumDriver
+        This is necessary in case of remote=True at consctructor, since in this
+        case self will be instance of 
+        selenium.webdriver.remote.webdriver.WebDriver which does not have it
+        implemented.
+        
+        Execute Chrome Devtools Protocol command and get returned result The
+        command and command args should follow chrome devtools protocol
+        domains/commands, refer to link
+        https://chromedevtools.github.io/devtools-protocol/
+
+        :Args:
+         - cmd: A str, command name
+         - cmd_args: A dict, command args. empty dict {} if there is no
+         command args
+        :Usage:
+            ::
+
+                driver.execute_cdp_cmd(
+                    'Network.getResponseBody', {'requestId': requestId}
+                )
+        :Returns:
+            A dict, empty dict {} if there is no result to return.
+            For example to getResponseBody:
+            {'base64Encoded': False, 'body': 'response body string'}
+        """
+        return self.execute("executeCdpCommand", {"cmd": cmd, "params": cmd_args})["value"]
+
