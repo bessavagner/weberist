@@ -26,6 +26,8 @@ def remove_cdc(chromedriver_path: str):
 
     # Create a hex dump of the binary content
     hex_dump = binascii.hexlify(binary_content).decode("ascii")
+    logger.info("Found %d occurrences of '$cdc_' and %d occurrences of 'webdriver'", hex_dump.count('246364635f'), hex_dump.count('777562647276657265'))
+
     # Replace occurrences of '$cdc_' with 'xymu' in the hex dump
     hex_dump = hex_dump.replace("246364635f", "7879646d75")
     # Replace occurrences of 'webdriver' with 'xyzabc'
@@ -45,6 +47,11 @@ def remove_cdc(chromedriver_path: str):
 
         chromedriver_path.chmod(0o755)
         logger.info("Modified ChromeDriver at %s", chromedriver_path)
+
+        with chromedriver_path.open("rb") as binary_file:
+            binary_content = binary_file.read()
+        hex_dump = binascii.hexlify(binary_content).decode("ascii")
+        logger.info("Found %d occurrences of '$cdc_' and %d occurrences of 'webdriver'", hex_dump.count('246364635f'), hex_dump.count('777562647276657265'))
 
     except Exception as e:
         logger.error("An error occurred while modifying ChromeDriver: %s", e)
