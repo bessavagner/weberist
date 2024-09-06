@@ -15,6 +15,7 @@ This module is part of the weberist project, a web automation and scraping
 framework.
 """
 import gc
+import time
 import socket
 import logging
 from re import match
@@ -35,7 +36,9 @@ from selenium_stealth import (
     user_agent_override,
     webgl_vendor_override,
     window_outerdimensions,
+    hairline_fix,
 )
+from selenium_stealth.wrapper import evaluateOnNewDocument
 
 from weberist.generic.shortcuts import (
     Firefox,
@@ -65,7 +68,7 @@ from weberist.generic.types import (
 from weberist.generic.constants import DEFAULT_ARGUMENTS, SELENOID_CAPABILITIES
 
 from .data import UserAgent, WindowSize
-from .config import DEFAULT_PROFILE
+from .config import DEFAULT_PROFILE, BASE_DIR
 from .stealth.tools import remove_cdc
 
 logger = logging.getLogger('standard')
@@ -488,7 +491,8 @@ class WebDriverFactory:
             if lang not in languages:
                 languages.append(lang)
             ua_languages = ','.join(languages)
-            
+
+            # Default selenium_stealth functions
             with_utils(instance, **kwargs)
             chrome_app(instance, **kwargs)
             chrome_runtime(instance, run_on_insecure_origins, **kwargs)
@@ -502,4 +506,25 @@ class WebDriverFactory:
             user_agent_override(instance, ua_languages=ua_languages, **kwargs)
             webgl_vendor_override(instance, webgl_vendor, renderer, **kwargs)
             window_outerdimensions(instance, **kwargs)
+            hairline_fix(instance, **kwargs)
+            
+            # Hide selenium fingerprints
+            selenium_fingerprint = Path(
+                BASE_DIR / 'base/stealth/js/selenium.fingerprint.js'
+            ).read_text(encoding='utf-8')
+            evaluateOnNewDocument(instance, selenium_fingerprint)
+            
+            error_stack_override = Path(
+                BASE_DIR / 'base/stealth/js/error.stack.override.js'
+            ).read_text(encoding='utf-8')
+            evaluateOnNewDocument(instance, error_stack_override)
+            webgl_override = Path(
+                BASE_DIR / 'base/stealth/js/webgl.worker.override.js'
+            ).read_text(encoding='utf-8')
+            evaluateOnNewDocument(
+                instance, webgl_override
+            )
+            #NOTE: add time.sleep
+            # time.sleep(0.5)
+            
         return instance
