@@ -103,6 +103,7 @@ xxd /usr/bin/chromedriver > chromedriver.hex
 
 # Replace occurrences of $cdc_ with xymu in the hex dump
 sed -i 's/24 63 64 63 5f/78 79 6d 75/g' chromedriver.hex
+sed -i 's/73656c656e69756d/xxyyelennyy/g' chromedriver.hex
 
 # Convert the modified hex dump back to binary
 xxd -r chromedriver.hex > /usr/bin/chromedriver
