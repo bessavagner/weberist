@@ -37,7 +37,7 @@ client_logger.setLevel(logging.DEBUG)
 
 
 def create_network(name: str = None, client: docker.DockerClient = None):
-    
+
     if name is None:
         name = DOCKER_NETWORK
     if client is None:
@@ -56,18 +56,18 @@ def create_chrome_dockerfile(name: str = None,
     target_path = target_path or DATA_DIR
     if not isinstance(target_path, Path):
         target_path = Path(target_path)
-    
+
     with open(DOCKER_FILE_CHROME, 'r', encoding='utf-8') as dockerfile_chrome:
         localstorage = target_path / 'localstorage'
         localstorage.mkdir(parents=True, exist_ok=True)
         entrypoint = target_path / 'chrome-entrypoint.sh'
-        copyfile(DOCKER_DIR / 'data/chrome-entrypoint.sh', entrypoint)
+        copyfile(DOCKER_DIR / 'chrome-entrypoint.sh', entrypoint)
         dockerfile_content = dockerfile_chrome.read().format(
             version=chrome_version,
             localstorage='./localstorage',
             entrypoint='./chrome-entrypoint.sh'
         )
-        
+
         name = name or 'Dockerfile'
         target_path = target_path or DOCKER_DIR
         if not isinstance(target_path, Path):
@@ -77,7 +77,7 @@ def create_chrome_dockerfile(name: str = None,
 
 def create_browsers_json(chrome_version: str = None,
                          target_path: str | Path = '.'):
-    
+
     chrome_version = chrome_version or CHROME_VERSIONS[-1]
     target_path = target_path or DATA_DIR
     if not isinstance(target_path, Path):
@@ -98,7 +98,7 @@ def create_selenoid_chrome_compose(name: str = None,
                                    network_name: str = None,
                                    chrome_version: str = None,
                                    target_path: str | Path = None):
-    
+
     target_path = target_path or DATA_DIR
     if isinstance(target_path, str):
         target_path = Path(target_path)
@@ -109,16 +109,16 @@ def create_selenoid_chrome_compose(name: str = None,
     target.mkdir(parents=True, exist_ok=True)
     video.mkdir(parents=True, exist_ok=True)
     logs.mkdir(parents=True, exist_ok=True)
-    
+
     name = name or DOCKER_COMPOSE
     network_name = network_name or DOCKER_NETWORK
-    
+
     create_chrome_dockerfile(dockerfile_name, chrome_version, target_path)
     create_browsers_json(chrome_version, target_path)
 
     template_compose = DOCKER_DIR / "docker-compose-selenoid.yml"
     with open(template_compose, 'r', encoding='utf-8') as docker_compose_file:
-        
+
         dockerfile_content = docker_compose_file.read().format(
             network=network_name,
             # NOTE: conflict if already created:
@@ -132,7 +132,7 @@ def create_selenoid_chrome_compose(name: str = None,
 def create_chrome_image(chrome_version: str = CHROME_VERSIONS[-1],
                         client: docker.DockerClient = None,
                         target_path: str | Path = None):
-    
+
     client = client or docker.from_env()
     target_path = target_path or DATA_DIR
     if isinstance(target_path, str):
@@ -165,14 +165,14 @@ def setup_selenoid_chrome(dockerfile_name: str = None,
                           chrome_version: str = CHROME_VERSIONS[-1],
                           target_path: str | Path = None,
                           client: docker.DockerClient = None):
-    
+
     client = client or docker.from_env()
     target_path = target_path or DATA_DIR
     if isinstance(target_path, str):
         target_path = Path(target_path)
-    
+
     network = create_network(name=network_name, client=client)
-    
+
     create_selenoid_chrome_compose(
         dockercompose_name,
         dockerfile_name,
@@ -235,7 +235,7 @@ def stop_docker_compose(process, path: str = None):
         process.wait(timeout=10)
     except subprocess.TimeoutExpired:
         process.kill()
-    
+
     # Optionally, you can shut down the containers cleanly
     command = ["docker", "compose", "down"]
     if path is not None:
@@ -243,9 +243,9 @@ def stop_docker_compose(process, path: str = None):
     subprocess.run(command, check=True)
 
 def wait_selenoid(quiet=False):
-    
+
     global is_selenoid_up
-    
+
     while not is_selenoid_up:
         time.sleep(1)
         if not quiet:
@@ -261,10 +261,10 @@ def run_selenoid_driver_task(driver_task: Callable,
                              target_path: str | Path = None,
                              chrome_kwargs: dict = None,
                              **kwargs):
-    
+
     global is_selenoid_up
     is_selenoid_up = False
-    
+
     client = docker.from_env()
     containers = client.containers.list()
     for container in containers:
@@ -276,7 +276,7 @@ def run_selenoid_driver_task(driver_task: Callable,
     target_path = target_path or DATA_DIR  # DOCKER_DIR
     if isinstance(target_path, str):
         target_path = Path(target_path)
-    
+
     setup_selenoid_chrome(
         dockerfile_name,
         dockercompose_name,
@@ -289,7 +289,7 @@ def run_selenoid_driver_task(driver_task: Callable,
     process = None
     if not is_selenoid_up:
         client_logger.debug("Selenoid is not up")
-        
+
         build = True
         path = Path(target_path) / dockercompose_name
         for container in client.containers.list(all=True):

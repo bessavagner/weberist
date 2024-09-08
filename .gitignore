@@ -36,8 +36,6 @@ error_logs/
 
 # data
 data/*
-src/data/*
-!src/data/localstorage/Profile\ 1/Extensions/
 users*
 target/
 video/
