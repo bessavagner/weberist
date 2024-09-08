@@ -65,10 +65,15 @@ from weberist.generic.types import (
     WebDriverServices,
     WebDriverManagers
 )
-from weberist.generic.constants import DEFAULT_ARGUMENTS, SELENOID_CAPABILITIES
+from weberist.generic.constants import (
+    DEFAULT_ARGUMENTS,
+    SELENOID_CAPABILITIES,
+    EXTENSIONS,
+    SUPPORTED_BROWSERS,
+)
 
 from .data import UserAgent, WindowSize
-from .config import DEFAULT_PROFILE, BASE_DIR
+from .config import DEFAULT_PROFILE, BASE_DIR, LOCALSTORAGE
 from .stealth.tools import remove_cdc
 
 logger = logging.getLogger('standard')
@@ -84,7 +89,7 @@ def free_port() -> int:
     return port
 
 def add_option(option: WebDriverOptions, arguments, browser: str = 'chrome'):
-    
+
     proceed_argument = True
     proceed_experimental = True
     for argument in arguments:
@@ -190,7 +195,7 @@ class WebDrivers:
             "manager": EdgeChromiumDriverManager
         }
     }
-    
+
     supported: Tuple[str] = tuple(__drivers.keys())
 
     def get(self,
@@ -232,7 +237,7 @@ class WebDrivers:
             raise AttributeError(
                 f'WebDrivers does not support driver for {browser}'
             )
-            
+
         driver = self.__drivers[browser]['driver']
         option, service = self._configure(
             browser,
@@ -258,22 +263,23 @@ class WebDrivers:
                           port: int = None,
                           lang: str = 'en-US',
                           remote: bool = False):
-        
+
         if extensions:
             if all(isinstance(item, Path) for item in extensions):
                 argument = '--load-extension=' + ','.join(
                     [str(path) for path in extensions]
                 )
+                options.add_argument(argument)
             else:
                 for argument in extensions:
                     options.add_extension(argument)
-       
+
         user_agent_string = None
         windows_size_ = None
         profile_name = None
 
         for argument in option_arguments:
-            
+
             if user_agent_string is None and 'user-agent' in argument:
                 user_agent_string = argument.split("=")[-1]
                 continue
@@ -282,10 +288,10 @@ class WebDrivers:
                 continue
             if profile_name is None and 'profile-directory' in argument:
                 profile_name = argument.split("=")[-1]
-            
+
         user_agent = UserAgent()
         windows_size = WindowSize()
-        
+
         if profile_name is not None:
             user_agent_string = user_agent.get_hashed(profile_name)
             windows_size_ = windows_size.get_hashed(profile_name)
@@ -302,13 +308,13 @@ class WebDrivers:
                 f"--window-size={windows_size_string}"
             ]
         )
-        
+
         host = host or "127.0.0.1"
         port = port or free_port()
         option_arguments.append(f"--remote-debugging-host={host}")
         option_arguments.append(f"--remote-debugging-port={port}")
         option_arguments.append(f'--lang={lang}')
-        
+
         service = None
         if capabilities is None:
             capabilities = {}
@@ -331,12 +337,12 @@ class WebDrivers:
                 else:
                     service = service_class(executable_path)
                 remove_cdc(service.path)
-        
+
         for name, value in capabilities.items():
             options.set_capability(name, value)
- 
+
         options = add_option(options, option_arguments, 'chrome')
-        
+
         return options, service
 
     def _configure(self,
@@ -346,20 +352,20 @@ class WebDrivers:
                    capabilities: Dict = None,
                    service_kwargs: Dict = None,
                    **kwargs):
-        
+
         browser_name = browser
         remote = False
         if 'remote' in browser:
             remote = True
             browser_name = browser.split('_')[0]
-        
+
         options_class = self.__drivers[browser_name]['options']
         service_class = self.__drivers[browser_name]['service']
         manager = self.__drivers[browser_name]['manager']
-        
+
         options: WebDriverOptions = options_class()
         option_arguments = option_arguments or []
-        
+
         if browser_name == 'chrome':
             return self._configure_chrome(
                 options,
@@ -377,10 +383,10 @@ class WebDrivers:
             logger.warning("Extensions only implemented for chrome.")
         if capabilities:
             logger.warning("Capabilities only implemented for chrome.")
- 
+
         options = add_option(options, option_arguments, browser)
         options = options or options_class()
-        
+
         service = None
         executable_path = None
         if hasattr(manager, 'install'):
@@ -389,7 +395,7 @@ class WebDrivers:
                 service = service_class(executable_path, **service_kwargs)
             else:
                 service = service_class(executable_path)
-        
+
         return options, service
 
 
@@ -400,7 +406,7 @@ class WebDriverFactory:
                 browser: str,
                 arguments: List[str | Dict],
                 **kwargs):
-        
+
         cls_properties = {
             name: getattr(cls, name)
             for name in dir(cls) if not match("__.*__", name)
@@ -408,17 +414,17 @@ class WebDriverFactory:
         if browser.split("_")[0] in DEFAULT_ARGUMENTS:
             arguments = arguments or []
             arguments.extend(list(DEFAULT_ARGUMENTS[browser.split("_")[0]]))
-        
+
         if 'remote' in browser and 'command_executor' not in kwargs:
             kwargs['command_executor'] = "http://0.0.0.0:4444/wd/hub"
-            
+
         if 'chrome' in browser:
-            if 'profile' in kwargs:
+            if 'profile' in kwargs and kwargs['profile']:
                 arguments.append(
                     f"--profile-directory={kwargs['profile']}"
                 )
                 kwargs.pop('profile')
-            if 'localstorage' in kwargs:
+            if 'localstorage' in kwargs and kwargs['localstorage']:
                 arguments.append(
                     f"--user-data-dir={kwargs['localstorage']}"
                 )
@@ -434,9 +440,9 @@ class WebDriverFactory:
 
         kwargs.pop('quit_on_failure', None)
         kwargs.pop('timeout', None)
-        
+
         return browser, cls_properties, arguments, kwargs
-    
+
     def __new__(cls,
                 *args,
                 browser: str = 'chrome',
@@ -447,12 +453,13 @@ class WebDriverFactory:
                 capabilities: Dict = None,
                 stealth: bool = True,
                 **kwargs,) -> WebDriver:
-
+            # extensions = extensions or []
+            # extensions.extend(EXTENSIONS[SUPPORTED_BROWSERS[1]])
         capabilities = kwargs.get('capabilities', None)
         browser, cls_properties, option_arguments, kwargs = cls._set_up(
             browser, option_arguments, **kwargs
         )
-        
+
         host = kwargs.pop("host", None)
         port = kwargs.pop("port", None)
         lang = kwargs.pop("lang", 'en')
@@ -462,7 +469,7 @@ class WebDriverFactory:
         webgl_vendor = kwargs.pop("webgl_vendor", "Intel Inc.")
         renderer = kwargs.pop("renderer", "Intel Iris OpenGL Engine")
         run_on_insecure_origins = kwargs.pop("run_on_insecure_origins", False)
-        
+
         driver, options, service = WebDrivers().get(
             browser,
             option_arguments,
@@ -476,6 +483,9 @@ class WebDriverFactory:
 
         if service is not None:
             kwargs['service'] = service
+
+        kwargs.pop('profile', None)
+        kwargs.pop('localstorage', None)
 
         instance: WebDriver = type(cls.__name__, (driver, ), cls_properties)(
             *args,
@@ -507,13 +517,13 @@ class WebDriverFactory:
             webgl_vendor_override(instance, webgl_vendor, renderer, **kwargs)
             window_outerdimensions(instance, **kwargs)
             hairline_fix(instance, **kwargs)
-            
+
             # Hide selenium fingerprints
             selenium_fingerprint = Path(
                 BASE_DIR / 'base/stealth/js/selenium.fingerprint.js'
             ).read_text(encoding='utf-8')
             evaluateOnNewDocument(instance, selenium_fingerprint)
-            
+
             error_stack_override = Path(
                 BASE_DIR / 'base/stealth/js/error.stack.override.js'
             ).read_text(encoding='utf-8')
@@ -526,5 +536,5 @@ class WebDriverFactory:
             )
             #NOTE: add time.sleep
             # time.sleep(0.5)
-            
+
         return instance

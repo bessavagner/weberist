@@ -1,7 +1,7 @@
 import sys
 
 from weberist.utils.helpers import SelectorType
-from weberist.base.config import CHROME_VERSIONS
+from weberist.base.config import CHROME_VERSIONS, CHROME_EXTENSIONS
 
 OPERATING_SYSTEM = sys.platform
 

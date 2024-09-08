@@ -56,6 +56,9 @@ class BaseDriver(WebDriverFactory):
                 localstorage: str = None,
                 **kwargs,):
         
+        kwargs['profile'] = profile
+        kwargs['localstorage'] = localstorage
+        
         instance = super().__new__(
             cls,
             *args,
@@ -68,8 +71,8 @@ class BaseDriver(WebDriverFactory):
             **kwargs,
         )
         
-        profile = kwargs.get('profile', None)
-        localstorage = kwargs.get('localstorage', None)
+        profile = kwargs['profile'] = kwargs.get('profile', None)
+        localstorage = kwargs['localstorage'] = kwargs.get('localstorage', None)
         cls.__init__(
             instance,
             quit_on_failure=quit_on_failure,

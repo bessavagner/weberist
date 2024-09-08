@@ -3,6 +3,7 @@ from typing import List, Any, Dict
 from pathlib import Path
 
 from weberist.base.drivers import BaseDriver
+from weberist.base.config import LOCALSTORAGE
 from weberist.generic.types import WebDriver
 
 from weberist.base.data import ProfileStorageBackend
@@ -27,6 +28,10 @@ class ChromeDriver(BaseDriver):
         browser = 'chrome'
         if remote:
             browser = 'chrome_remote'
+
+        if 'stealth' in kwargs:
+            kwargs['profile'] = kwargs.get('profile', 'Profile 1')
+            kwargs['localstorage'] = kwargs.get('localstorage', LOCALSTORAGE)
         profile = kwargs.get('profile', None)
         localstorage = kwargs.get('localstorage', None)
         

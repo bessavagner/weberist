@@ -36,11 +36,11 @@ error_logs/
 
 # data
 data/*
-!data/localstorage/
+src/data/*
+!src/data/localstorage/Profile\ 1/Extensions/
 users*
 target/
 video/
-extensions/
 
 # Others
 z_*
