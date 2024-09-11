@@ -15,11 +15,13 @@ from weberist import ChromeDriver
 from weberist.base.config import (
     DATA_DIR,
     DOCKER_DIR,
+    DOCKER_FILE_BROWSER,
     DOCKER_FILE_CHROME,
     DOCKER_CHROME_LOCALSTORAGE,
     CHROME_IMAGE,
     DOCKER_NETWORK,
     CHROME_VERSIONS,
+    FIREFOX_VERSIONS,
     DOCKER_COMPOSE,
     CONTAINER_SELENOID,
     CONTAINER_SELENOID_UI,
@@ -48,32 +50,46 @@ def create_network(name: str = None, client: docker.DockerClient = None):
             return network
     return client.networks.create(name)
 
-def create_chrome_dockerfile(name: str = None,
-                             chrome_version: str = None,
-                             target_path: str | Path = None):
-
-    chrome_version = chrome_version or CHROME_VERSIONS[-1]
+def create_dockerfile(name: str = None,
+                      browser: str = None,
+                      version: str = None,
+                      target_path: str | Path = None):
+    
     target_path = target_path or DATA_DIR
     if not isinstance(target_path, Path):
         target_path = Path(target_path)
 
-    with open(DOCKER_FILE_CHROME, 'r', encoding='utf-8') as dockerfile_chrome:
+    with open(DOCKER_FILE_BROWSER, 'r', encoding='utf-8') as dockerfile_chrome:
         localstorage = target_path / 'localstorage'
         localstorage.mkdir(parents=True, exist_ok=True)
-        entrypoint = target_path / 'chrome-entrypoint.sh'
-        copyfile(DOCKER_DIR / 'chrome-entrypoint.sh', entrypoint)
+        entrypoint = target_path / f'{browser}-entrypoint.sh'
+        copyfile(DOCKER_DIR / f'{browser}-entrypoint.sh', entrypoint)
         dockerfile_content = dockerfile_chrome.read().format(
-            version=chrome_version,
+            version=version,
             localstorage='./localstorage',
-            entrypoint='./chrome-entrypoint.sh'
+            entrypoint=f'./{browser}-entrypoint.sh'
         )
 
-        name = name or 'Dockerfile'
+        name = name or f'Dockerfile-{browser}'
         target_path = target_path or DOCKER_DIR
         if not isinstance(target_path, Path):
             target_path = Path(target_path)
         with open(target_path / name, 'w', encoding='utf-8') as dockerfile:
             dockerfile.write(dockerfile_content)
+
+def create_chrome_dockerfile(name: str = None,
+                             chrome_version: str = None,
+                             target_path: str | Path = None):
+
+    chrome_version = chrome_version or CHROME_VERSIONS[-1]
+    create_dockerfile(name, 'chrome', chrome_version, target_path)
+
+def create_firefox_dockerfile(name: str = None,
+                             firefox_version: str = None,
+                             target_path: str | Path = None):
+
+    firefox_version = firefox_version or FIREFOX_VERSIONS[-1]
+    create_dockerfile(name, 'firefox', firefox_version, target_path)
 
 def create_browsers_json(chrome_version: str = None,
                          target_path: str | Path = '.'):
