@@ -7,7 +7,7 @@ import subprocess
 import threading
 from shutil import copyfile
 from pathlib import Path
-from typing import Callable
+from typing import Callable, List, Dict
 
 import docker
 
@@ -16,7 +16,6 @@ from weberist.base.config import (
     DATA_DIR,
     DOCKER_DIR,
     DOCKER_FILE_BROWSER,
-    DOCKER_FILE_CHROME,
     DOCKER_CHROME_LOCALSTORAGE,
     CHROME_IMAGE,
     DOCKER_NETWORK,
@@ -25,8 +24,9 @@ from weberist.base.config import (
     DOCKER_COMPOSE,
     CONTAINER_SELENOID,
     CONTAINER_SELENOID_UI,
+    BROWSER_DICT,
 )
-from weberist.generic.types import WebDriver
+from weberist.generic.types import TypeBrowser
 
 
 SELENOID_STARTED_CUE = "[INIT] [Listening on :4444]"
@@ -66,6 +66,7 @@ def create_dockerfile(name: str = None,
         copyfile(DOCKER_DIR / f'{browser}-entrypoint.sh', entrypoint)
         dockerfile_content = dockerfile_chrome.read().format(
             version=version,
+            browser=browser,
             localstorage='./localstorage',
             entrypoint=f'./{browser}-entrypoint.sh'
         )
@@ -85,11 +86,47 @@ def create_chrome_dockerfile(name: str = None,
     create_dockerfile(name, 'chrome', chrome_version, target_path)
 
 def create_firefox_dockerfile(name: str = None,
-                             firefox_version: str = None,
-                             target_path: str | Path = None):
+                              firefox_version: str = None,
+                              target_path: str | Path = None):
 
     firefox_version = firefox_version or FIREFOX_VERSIONS[-1]
     create_dockerfile(name, 'firefox', firefox_version, target_path)
+
+def create_browser_config_dict(browser: str,
+                               versions: List[int],
+                               default: int = 0,
+                               **kwargs):
+    browser_config = {}
+    images = [f"{browser}_{version}.0" for version in versions]
+    browser_config["default"] = images[default]
+    browser_config["versions"] = {}
+    for image in images:
+        browser_config["versions"][image] = BROWSER_DICT
+        browser_config["versions"][image]["image"] = f"weberist-{image}"
+        for key, value in kwargs.items():
+            browser_config["versions"][image][key] = value
+    return browser_config
+
+def create_browser_config_file(browsers: Dict[str, TypeBrowser],
+                               target_path: str | Path = None):
+    browsers_json = {}
+    for browser, info in browsers.items():
+        kwargs = {}
+        if 'kwargs' in  info:
+            kwargs = info['kwargs']
+        browsers_json[browser] = create_browser_config_dict(
+            browser,
+            info['versions'],
+            info['default'],
+            **kwargs
+        )
+    target_path = target_path or DATA_DIR
+    if not isinstance(target_path, Path):
+        target_path = Path(target_path)
+
+    path = target_path / 'browsers.json'
+    with open(path, 'w', encoding='utf-8') as json_file:
+        json.dump(browsers_json, json_file, indent=4, ensure_ascii=False)
 
 def create_browsers_json(chrome_version: str = None,
                          target_path: str | Path = '.'):

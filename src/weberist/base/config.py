@@ -9,6 +9,7 @@ DOCKER_DIR = ROOT_DIR / 'docker'
 LOCALSTORAGE = DATA_DIR / 'localstorage'
 DOCKER_CHROME_LOCALSTORAGE = ROOT_DIR / 'localstorage'
 CHROME_EXTENSIONS = DATA_DIR / 'extensions/chrome'
+DOCKER_FILE_BROWSER = DOCKER_DIR / 'Dockerfile'
 DOCKER_FILE_CHROME = DOCKER_DIR / 'Dockerfile-chrome'
 CHROME_IMAGE = 'weberist-chrome_{version}.0'
 DOCKER_COMPOSE = 'docker-compose.yml'
@@ -17,6 +18,17 @@ CONTAINER_SELENOID = 'weberist-selenoid'
 CONTAINER_SELENOID_UI = 'weberist-selenoid-ui'
 DEFAULT_PROFILE = 'Profile 1'
 CHROME_VERSIONS = tuple(str(i) for i in range(48, 128))
+FIREFOX_VERSIONS = tuple(str(i) for i in range(4, 125))
+
+BROWSER_DICT = {
+    "image": None,
+    "port": 4444,
+    "tmpfs": {
+        "/tmp": "size=512m",
+        "/var": "size=128m",
+    },
+    "path": "/"
+}
 
 LOG = {
     "version": 1,
