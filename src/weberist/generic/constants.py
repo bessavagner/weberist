@@ -1,7 +1,7 @@
 import sys
 
 from weberist.utils.helpers import SelectorType
-from weberist.base.config import CHROME_VERSIONS, CHROME_EXTENSIONS
+from weberist.base.config import CHROME_VERSIONS, FIREFOX_VERSIONS
 
 OPERATING_SYSTEM = sys.platform
 
@@ -25,11 +25,15 @@ ATTR_SELECTOR = {
 }
 
 SUPPORTED_BROWSERS: tuple[str] = (
-    "firefox",
     "chrome",
+    "firefox",
     "safari",
     "edge"
 )
+
+BROWSERS_VERSIONS = {
+    
+}
 
 SELENOID_CAPABILITIES = {
     "browserName": "chrome",
@@ -41,7 +45,7 @@ SELENOID_CAPABILITIES = {
 }
 
 DEFAULT_ARGUMENTS = {
-    SUPPORTED_BROWSERS[1]: (
+    SUPPORTED_BROWSERS[0]: (
         "--start-maximized",
         "--no-first-run",
         "--disable-site-isolation-trials",
