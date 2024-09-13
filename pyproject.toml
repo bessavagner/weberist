@@ -19,6 +19,7 @@ docker = "^7.1.0"
 beautifulsoup4 = "^4.12.3"
 lxml = "^5.3.0"
 selenium-stealth = "^1.0.6"
+nest-asyncio = "^1.6.0"
 
 
 [build-system]
