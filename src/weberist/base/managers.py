@@ -68,7 +68,6 @@ from weberist.generic.types import (
 from weberist.generic.constants import (
     DEFAULT_ARGUMENTS,
     SELENOID_CAPABILITIES,
-    EXTENSIONS,
     SUPPORTED_BROWSERS,
 )
 
@@ -453,8 +452,7 @@ class WebDriverFactory:
                 capabilities: Dict = None,
                 stealth: bool = True,
                 **kwargs,) -> WebDriver:
-            # extensions = extensions or []
-            # extensions.extend(EXTENSIONS[SUPPORTED_BROWSERS[1]])
+
         capabilities = kwargs.get('capabilities', None)
         browser, cls_properties, option_arguments, kwargs = cls._set_up(
             browser, option_arguments, **kwargs
