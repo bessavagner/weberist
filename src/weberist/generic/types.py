@@ -1,4 +1,4 @@
-from typing import Union, List
+from typing import Union, List, Dict, TypedDict, Any
 
 from weberist.generic.shortcuts import (
     Firefox,
@@ -40,3 +40,8 @@ WebDriverManagers = Union[
     GeckoDriverManager,
     EdgeChromiumDriverManager
 ]
+
+class TypeBrowser(TypedDict):
+    versions: List[int]
+    default: int
+    kwargs: Dict[str, Any]

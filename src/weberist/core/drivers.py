@@ -23,7 +23,7 @@ class ChromeDriver(BaseDriver):
                 quit_on_failure: bool = False,
                 timeout: int = 20,
                 remote: bool = False,
-                **kwargs,):
+                **kwargs,) -> BaseDriver:
         
         browser = 'chrome'
         if remote:

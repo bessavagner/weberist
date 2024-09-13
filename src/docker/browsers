@@ -12,5 +12,19 @@
                 "path": "/"
             }}
         }}
+    }},
+    "firefox": {{
+        "default": "firefox_{version}.0",
+        "versions": {{
+            "firefox_{version}.0": {{
+                "image": "weberist-firefox_{version}.0",
+                "port": "4444",
+                "tmpfs": {{
+                    "/tmp": "size=512m",
+                    "/var": "size=128m"
+                }},
+                "path": "/"
+            }}
+        }}
     }}
 }}

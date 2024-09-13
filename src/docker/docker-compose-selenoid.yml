@@ -9,8 +9,6 @@ services:
 
   selenoid:
     image: "aerokube/selenoid:latest"
-    # NOTE: conflict if already created:
-    # container_name: {container_selenoid}
     volumes:
       - ".:/etc/selenoid"
       - "./target:/output"
@@ -28,8 +26,6 @@ services:
   
   selenoid-ui:
     image: "aerokube/selenoid-ui:latest"
-    # NOTE: conflict if already created:
-    # container_name: {container_selenoid_ui}
     links:
       - selenoid
     networks:
