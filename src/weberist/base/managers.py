@@ -398,7 +398,7 @@ class WebDrivers:
         return options, service
 
 
-class WebDriverFactory:
+class WebDriverFactory(SeleniumWebDriver):
 
     @classmethod
     def _set_up(cls,

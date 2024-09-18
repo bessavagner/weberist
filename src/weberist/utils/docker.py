@@ -3,10 +3,14 @@ import json
 import time
 import signal
 import asyncio
+import asyncio
 import logging
 import tarfile
 import threading
+import tarfile
+import threading
 import subprocess
+from io import BytesIO
 from io import BytesIO
 from shutil import copyfile
 from pathlib import Path
@@ -21,6 +25,8 @@ from weberist.base.config import (
     DOCKER_FILE_BROWSER,
     LOCALSTORAGE,
     BROWSER_IMAGE,
+    LOCALSTORAGE,
+    BROWSER_IMAGE,
     CHROME_IMAGE,
     DOCKER_NETWORK,
     CHROME_VERSIONS,
@@ -31,7 +37,7 @@ from weberist.base.config import (
     BROWSER_DICT,
 )
 from weberist.generic.types import TypeBrowser
-from weberist.generic.utils import run_async
+from weberist.generic.utils import run_async, gather_and_handle
 
 
 SELENOID_STARTED_CUE = "[INIT] [Listening on :4444]"
@@ -204,18 +210,23 @@ async def create_browsers_images_async(browsers: Dict[str, TypeBrowser],
                 asyncio.create_task(
                     create_browser_image_async(
                         browser, version, client, target_path
-                    )
+                    ),
+                    name=f"{browser}-{version}"
                 )
             )
             counter += 1
             if counter == n_batches:
-                results.extend(await asyncio.gather(*tasks))
+                result = await gather_and_handle(tasks, raise_error=False)
+                results.extend(result)
                 tasks = []
     if len(tasks) > 0:
-        results.extend(await asyncio.gather(*tasks))
-    for image, log in results:
-        data['images'].append(image)
-        data['logs'].append(log)
+        result = await gather_and_handle(tasks, raise_error=False)
+        results.extend(result)
+    for result in results:
+        if result is not None:
+            image, log = result
+            data['images'].append(image)
+            data['logs'].append(log)
     return data
 
 def create_browser_config_dict(browser: str,
@@ -233,8 +244,8 @@ def create_browser_config_dict(browser: str,
             browser_config["versions"][image][key] = value
     return browser_config
 
-def create_browsers_config_file(browsers: Dict[str, TypeBrowser],
-                                target_path: str | Path = None):
+def create_browsers_json(browsers: Dict[str, TypeBrowser],
+                         target_path: str | Path = None):
     browsers_json = {}
     for browser, info in browsers.items():
         kwargs = {}
@@ -254,24 +265,6 @@ def create_browsers_config_file(browsers: Dict[str, TypeBrowser],
     with open(path, 'w', encoding='utf-8') as json_file:
         json.dump(browsers_json, json_file, indent=4, ensure_ascii=False)
 
-def create_browsers_json(chrome_version: str = None,
-                         target_path: str | Path = '.'):
-
-    chrome_version = chrome_version or CHROME_VERSIONS[-1]
-    target_path = target_path or DATA_DIR
-    if not isinstance(target_path, Path):
-        target_path = Path(target_path)
-
-    browsers_template = DOCKER_DIR / 'browsers'
-    browsers_json = target_path / 'browsers.json'
-    with open(browsers_template, encoding='utf-8') as json_template:
-        browsers = json_template.read().format(
-            version=chrome_version,
-        )
-        content = json.loads(browsers)
-        with open(browsers_json, 'w', encoding='utf-8') as json_file:
-            json.dump(content, json_file, indent=4, ensure_ascii=False)
-
 def create_selenoid_compose(browsers: Dict[str, TypeBrowser],
                             name: str = None,
                             network_name: str = None,
@@ -289,7 +282,7 @@ def create_selenoid_compose(browsers: Dict[str, TypeBrowser],
     video.mkdir(parents=True, exist_ok=True)
     logs.mkdir(parents=True, exist_ok=True)
     
-    create_browsers_config_file(browsers, target_path)
+    create_browsers_json(browsers, target_path)
     
     # data = create_browsers_images(browsers, client, target_path)
     data = run_async(
@@ -486,7 +479,6 @@ def wait_selenoid(quiet=False):
 
 def run_selenoid_driver_task(driver_task: Callable,
                              *args,
-                             browsers: Dict[str, TypeBrowser],
                              dockercompose_name: str = None,
                              network_name: str = None,
                              target_path: str | Path = None,
@@ -507,7 +499,9 @@ def run_selenoid_driver_task(driver_task: Callable,
     target_path = target_path or DATA_DIR  # DOCKER_DIR
     if isinstance(target_path, str):
         target_path = Path(target_path)
-    
+    browsers = {
+        'chrome': TypeBrowser(versions=[CHROME_VERSIONS[-1]], default=-1)
+    }
     setup_selenoid(
         browsers,
         network_name,

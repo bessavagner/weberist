@@ -54,12 +54,12 @@ class BaseDriver(WebDriverFactory):
                 timeout: int = 20,
                 profile: str = None,
                 localstorage: str = None,
-                **kwargs,):
+                **kwargs,) -> WebDriver:
         
         kwargs['profile'] = profile
         kwargs['localstorage'] = localstorage
         
-        instance = super().__new__(
+        instance: WebDriver = super().__new__(
             cls,
             *args,
             browser=browser,
