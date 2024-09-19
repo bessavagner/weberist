@@ -1,4 +1,4 @@
-import os
+import gc
 import logging
 import traceback
 from abc import ABC, abstractmethod
@@ -34,6 +34,7 @@ from .exceptions import (
     WebDriverException,
     NoSuchWindowException,
     NoSuchElementException,
+    InvalidSessionIdException,
 )
 
 
@@ -97,6 +98,15 @@ class BaseDriver(WebDriverFactory):
         if profile and localstorage:
             self.target_path = Path(localstorage)
             self.profile_backend = ProfileStorageBackend(self.target_path)
+
+    def __enter__(self):
+        self._quit_on_failure = False
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback_):
+        if exc_type or exc_value or traceback_:
+            logger.error("Exception occurred: %s", exc_value)
+        self.quit_driver()
     
     @property
     def quit_on_failure(self,):
@@ -137,11 +147,28 @@ class BaseDriver(WebDriverFactory):
                 logger.error(traceback.format_exc())
                 if self.quit_on_failure:
                     logger.warning("Closing window and quitting driver.")
-                    self.close(quit_driver=True)
+                    self.quit_driver()
                     logger.warning("Driver quit.")
                 raise err
 
         return inner
+
+    def quit_driver(self):
+        try:
+            self.quit()
+        except EXCEPTIONS as err:
+            logger.error("Error while quitting driver: %s", err)
+        finally:
+            logger.info("Driver quit successfully.")
+            self._cleanup()
+
+    def _cleanup(self):
+        if hasattr(self, 'service') and self.service:
+            try:
+                self.service.stop()
+            except EXCEPTIONS as err:
+                logger.error("Error while stopping service: %s", err)
+        gc.collect()
 
     def is_running(self,) -> bool:
         """
@@ -158,11 +185,8 @@ class BaseDriver(WebDriverFactory):
             otherwise.
         """
         try:
-            if self.service is not None:
-                self.service.assert_process_still_running()
-                return True
             return isinstance(self.current_url, str)
-        except WebDriverException:
+        except (WebDriverException, InvalidSessionIdException):
             return False
 
     @quitonfailure
