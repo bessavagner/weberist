@@ -423,17 +423,25 @@ class WebDriverFactory(SeleniumWebDriver):
             kwargs['command_executor'] = "http://0.0.0.0:4444/wd/hub"
 
         if 'chrome' in browser:
+            experimental_options = kwargs.pop("experimental_options", {})
             if 'profile' in kwargs and kwargs['profile']:
                 arguments.append(
                     f"--profile-directory={kwargs['profile']}"
                 )
                 kwargs.pop('profile')
             if 'localstorage' in kwargs and kwargs['localstorage']:
+                path = Path(kwargs['localstorage'])
+                experimental_options.update(
+                    {
+                        "profile.default_content_settings.popups": 0,
+                        "download.default_directory": path / "Downloads",
+                        "directory_upgrade": True
+                    }
+                )
                 arguments.append(
-                    f"--user-data-dir={kwargs['localstorage']}"
+                    f"--user-data-dir={path}"
                 )
                 kwargs.pop('localstorage')
-            experimental_options = kwargs.pop("experimental_options", {})
             experimental_options.update(
                 {
                     "excludeSwitches": ["enable-automation"],
