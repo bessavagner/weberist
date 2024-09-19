@@ -1,7 +1,9 @@
+import re
 import logging
 import asyncio
 import traceback
 from typing import List
+from urllib.parse import urlparse
 
 logger = logging.getLogger('weberist.generic.utils')
 
@@ -64,3 +66,15 @@ def run_async(coro, *args, **kwargs):
                 logger.error(err)
                 logger.warning("Install nest_asyncio to run nested async.")
                 raise err
+
+def extract_base_url(text: str) -> str:
+    url_pattern = r'(https?://[^\s]+)'
+    urls = re.findall(url_pattern, text)
+
+    if not urls:
+        return None
+
+    parsed_url = urlparse(urls[0])
+    base_url = f'{parsed_url.scheme}://{parsed_url.netloc}'
+    
+    return base_url

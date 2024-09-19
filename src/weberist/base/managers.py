@@ -22,6 +22,9 @@ from re import match
 from typing import Any, List, Dict, Tuple
 from pathlib import Path
 
+from selenium.webdriver.common.options import BaseOptions
+from selenium.webdriver.remote.file_detector import FileDetector
+from selenium.webdriver.remote.remote_connection import RemoteConnection
 from selenium_stealth import (
     with_utils,
     chrome_app,
@@ -399,7 +402,9 @@ class WebDrivers:
 
 
 class WebDriverFactory(SeleniumWebDriver):
-
+    
+    service: WebDriverServices = None
+    
     @classmethod
     def _set_up(cls,
                 browser: str,

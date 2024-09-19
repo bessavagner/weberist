@@ -11,7 +11,7 @@ from lxml import etree
 
 from weberist.generic.shortcuts import WebDriverWait
 from weberist.generic.shortcuts import expected_conditions as EC
-from weberist.generic.shortcuts import SeleniumWebDriver
+from weberist.generic.utils import extract_base_url
 from weberist.generic.constants import ATTR_SELECTOR
 from weberist.generic.types import (
     WebDriver,
@@ -188,6 +188,10 @@ class BaseDriver(WebDriverFactory):
             return isinstance(self.current_url, str)
         except (WebDriverException, InvalidSessionIdException):
             return False
+
+    @quitonfailure
+    def base_url(self,):
+        return extract_base_url(self.current_url)
 
     @quitonfailure
     def tab_handle(self):
