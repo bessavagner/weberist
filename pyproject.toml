@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "weberist"
-version = "0.1.3"
+version = "0.1.4"
 description = "Adapter for Selenium"
 authors = ["bessavagner <bessavagner@gmail.com>"]
 license = "MIT"
