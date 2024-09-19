@@ -17,6 +17,7 @@ from weberist.generic.types import (
     WebDriver,
     WebElement,
     WebElements,
+    WebDriverServices,
 )
 from weberist.utils.helpers import Key
 from weberist.utils.javascript import (
@@ -451,6 +452,50 @@ class BaseDriver(WebDriverFactory):
             ignored_exceptions
         )
 
+    @quitonfailure
+    def find_text(self,
+                    value: str,
+                    tag: str = None,
+                    expected_condition=EC.presence_of_all_elements_located,
+                    timeout=None,
+                    poll_frequency=0.5,
+                    ignored_exceptions=(NoSuchElementException,)):
+        if tag is None:
+            tag = "*"
+        xpath = f"//{tag}[text()='{value}']"
+        result = self.xpath(
+            value=xpath,
+            expected_condition=expected_condition,
+            timeout=timeout,
+            poll_frequency=poll_frequency,
+            ignored_exceptions=ignored_exceptions,
+        )
+        if result and len(result) > 0:
+            return result
+        return None
+
+    @quitonfailure
+    def find_contains_text(self,
+                           value: str,
+                           tag: str = None,
+                           expected_condition=EC.presence_of_all_elements_located,
+                           timeout=None,
+                           poll_frequency=0.5,
+                           ignored_exceptions=(NoSuchElementException,)):
+        if tag is None:
+            tag = "*"
+        xpath = f"//{tag}[contains(text(), '{value}')]"
+        result = self.xpath(
+            value=xpath,
+            expected_condition=expected_condition,
+            timeout=timeout,
+            poll_frequency=poll_frequency,
+            ignored_exceptions=ignored_exceptions,
+        )
+        if result and len(result) > 0:
+            return result
+        return None
+    
     @quitonfailure
     def send_to(
         self,
