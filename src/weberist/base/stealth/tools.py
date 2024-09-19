@@ -3,7 +3,7 @@ import shutil
 import binascii
 from pathlib import Path
 
-logger = logging.getLogger("base.stealth")
+logger = logging.getLogger("weberist.base.stealth")
 
 
 def hex_dump_to_bytes(hex_dump: str) -> bytes:
