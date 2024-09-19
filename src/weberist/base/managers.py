@@ -435,7 +435,6 @@ class WebDriverFactory(SeleniumWebDriver):
                     {
                         "profile.default_content_settings.popups": 0,
                         "download.default_directory": str(path / "Downloads"),
-                        "directory_upgrade": True
                     }
                 )
                 arguments.append(
