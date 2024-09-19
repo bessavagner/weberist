@@ -94,6 +94,8 @@ class BaseDriver(WebDriverFactory):
         self._quit_on_failure = quit_on_failure
         self.timeout = timeout
         self.target_path = Path('.')
+        self.soup = None
+        self.dom = None
         
         if profile and localstorage:
             self.target_path = Path(localstorage)
