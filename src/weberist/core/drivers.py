@@ -86,3 +86,9 @@ class ChromeDriver(BaseDriver):
         """
         return self.execute("executeCdpCommand", {"cmd": cmd, "params": cmd_args})["value"]
 
+    def change_download_dir(self, path: str | Path):
+        params = {
+            "behavior": "allow",
+            "downloadPath": str(path)
+        }
+        self.execute_cdp_cmd("Page.setDownloadBehavior", params)
