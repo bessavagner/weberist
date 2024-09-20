@@ -430,15 +430,8 @@ class WebDriverFactory(SeleniumWebDriver):
                 )
                 kwargs.pop('profile')
             if 'localstorage' in kwargs and kwargs['localstorage']:
-                path = Path(kwargs['localstorage'])
-                experimental_options.update(
-                    {
-                        "profile.default_content_settings.popups": 0,
-                        "download.default_directory": str(path / "Downloads"),
-                    }
-                )
                 arguments.append(
-                    f"--user-data-dir={path}"
+                    f"--user-data-dir={kwargs['localstorage']}"
                 )
                 kwargs.pop('localstorage')
             experimental_options.update(
