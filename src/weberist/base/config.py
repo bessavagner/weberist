@@ -22,7 +22,7 @@ FIREFOX_VERSIONS = tuple(str(i) for i in range(4, 125))
 
 BROWSER_DICT = {
     "image": None,
-    "port": 4444,
+    "port": "4444",
     "tmpfs": {
         "/tmp": "size=512m",
         "/var": "size=128m",
