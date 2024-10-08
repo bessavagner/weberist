@@ -2,8 +2,7 @@
 
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-ROOT_DIR = BASE_DIR.parent
+ROOT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT_DIR / 'data'
 DOCKER_DIR = ROOT_DIR / 'docker'
 LOCALSTORAGE = DATA_DIR / 'localstorage'

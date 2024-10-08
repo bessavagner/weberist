@@ -1,16 +1,16 @@
 [tool.poetry]
 name = "weberist"
-version = "0.1.9"
+version = "0.1.12"
 description = "Adapter for Selenium"
 authors = ["bessavagner <bessavagner@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 packages = [{include = "weberist", from = "src"}]
 include = [
-    {path = "src/docker/Dockerfile", format = ["sdist", "wheel"]},
-    {path = "src/docker/docker-compose-selenoid.yml", format = ["sdist", "wheel"]},
-    {path = "src/docker/chrome-entrypoint.sh", format = ["sdist", "wheel"]},
-    {path = "src/docker/firefox-entrypoint.sh", format = ["sdist", "wheel"]},
+    {path = "src/weberist/docker/Dockerfile", format = ["sdist", "wheel"]},
+    {path = "src/weberist/docker/docker-compose-selenoid.yml", format = ["sdist", "wheel"]},
+    {path = "src/weberist/docker/chrome-entrypoint.sh", format = ["sdist", "wheel"]},
+    {path = "src/weberist/docker/firefox-entrypoint.sh", format = ["sdist", "wheel"]},
 ]
 
 [tool.poetry.dependencies]

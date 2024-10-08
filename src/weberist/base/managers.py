@@ -75,7 +75,7 @@ from weberist.generic.constants import (
 )
 
 from .data import UserAgent, WindowSize
-from .config import DEFAULT_PROFILE, BASE_DIR, LOCALSTORAGE
+from .config import DEFAULT_PROFILE, ROOT_DIR, LOCALSTORAGE
 from .stealth.tools import remove_cdc
 
 logger = logging.getLogger('standard')
@@ -523,16 +523,16 @@ class WebDriverFactory(SeleniumWebDriver):
 
             # Hide selenium fingerprints
             selenium_fingerprint = Path(
-                BASE_DIR / 'base/stealth/js/selenium.fingerprint.js'
+                ROOT_DIR / 'base/stealth/js/selenium.fingerprint.js'
             ).read_text(encoding='utf-8')
             evaluateOnNewDocument(instance, selenium_fingerprint)
 
             error_stack_override = Path(
-                BASE_DIR / 'base/stealth/js/error.stack.override.js'
+                ROOT_DIR / 'base/stealth/js/error.stack.override.js'
             ).read_text(encoding='utf-8')
             evaluateOnNewDocument(instance, error_stack_override)
             webgl_override = Path(
-                BASE_DIR / 'base/stealth/js/webgl.worker.override.js'
+                ROOT_DIR / 'base/stealth/js/webgl.worker.override.js'
             ).read_text(encoding='utf-8')
             evaluateOnNewDocument(
                 instance, webgl_override
